@@ -9,6 +9,11 @@ import com.tasks.organizer.repository.UserRepository;
 import com.tasks.organizer.service.AuthenticationService;
 import com.tasks.organizer.service.JwtService;
 import lombok.RequiredArgsConstructor;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,9 +32,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public JwtAuthenticationResponse signup(SignUpRequest request) {
         var user = User.builder().firstName(request.getFirstName()).lastName(request.getLastName())
                 .email(request.getEmail()).password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.USER).build();
-        userRepository.save(user);
-        var jwt = jwtService.generateToken(user);
+                .role(Role.STUDENT).build();
+        User newUser = userRepository.save(user);
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("id", newUser.getId().toString());
+        var jwt = jwtService.generateToken(extraClaims, user);
         return JwtAuthenticationResponse.builder().token(jwt).build();
     }
 
@@ -39,7 +46,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         var user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
-        var jwt = jwtService.generateToken(user);
+
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("id", user.getId());
+        var jwt = jwtService.generateToken(extraClaims, user);
         return JwtAuthenticationResponse.builder().token(jwt).build();
     }
 }
