@@ -12,6 +12,7 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -34,8 +35,14 @@ public class JwtServiceImpl implements JwtService {
     }
 
     @Override
-    public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
+    public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        return generateTokenIdentifiers(extraClaims, userDetails);
+    }
+
+    @Override
+    public UUID extractUserId(String token) {
+        String id = extractClaim(token, claims -> claims.get("userId", String.class));
+        return UUID.fromString(id);
     }
 
     @Override
@@ -49,7 +56,7 @@ public class JwtServiceImpl implements JwtService {
         return claimsResolvers.apply(claims);
     }
 
-    private String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+    private String generateTokenIdentifiers(Map<String, Object> extraClaims, UserDetails userDetails) {
         try{
             return Jwts.builder().setClaims(extraClaims).setSubject(userDetails.getUsername())
                     .setIssuedAt(new Date(System.currentTimeMillis()))
@@ -58,7 +65,6 @@ public class JwtServiceImpl implements JwtService {
         }catch (Exception e){
             throw new JwtException("Error in generate token: [ " + e.getMessage() + " ]");
         }
-
     }
 
     private boolean isTokenExpired(String token) {

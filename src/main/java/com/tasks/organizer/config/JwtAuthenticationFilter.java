@@ -1,6 +1,7 @@
 package com.tasks.organizer.config;
 
 import java.io.IOException;
+import java.util.UUID;
 
 import com.tasks.organizer.service.JwtService;
 import com.tasks.organizer.service.UserService;
