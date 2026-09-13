@@ -10,7 +10,6 @@ import io.jsonwebtoken.security.Keys;
 
 import java.security.Key;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -41,7 +40,7 @@ public class JwtServiceImpl implements JwtService {
 
     @Override
     public UUID extractUserId(String token) {
-        String id = extractClaim(token, claims -> claims.get("userId", String.class));
+        String id = extractClaim(token, claims -> claims.get("id", String.class));
         return UUID.fromString(id);
     }
 
@@ -84,5 +83,4 @@ public class JwtServiceImpl implements JwtService {
         byte[] keyBytes = Decoders.BASE64.decode(jwtSigningKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
-
 }
