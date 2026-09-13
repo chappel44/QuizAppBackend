@@ -35,8 +35,9 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests((request) ->
                      request.requestMatchers(HttpMethod.OPTIONS).permitAll()
                             .requestMatchers("/api/auth/**").permitAll()
-                            .requestMatchers("/api/resource/user").hasAuthority(Role.STUDENT.name())
-                            .requestMatchers("/api/**").hasAuthority(Role.ADMIN.name())
+                            .requestMatchers("/api/authenticated/**").hasAnyAuthority(Role.ADMIN.name(), Role.STUDENT.name())
+                            .requestMatchers("/api/student/**").hasAuthority(Role.STUDENT.name())
+                            .requestMatchers("/api/admin/**").hasAuthority(Role.ADMIN.name())
                             .anyRequest().authenticated())
                 .sessionManagement(manager -> manager.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider()).addFilterBefore(
@@ -62,5 +63,4 @@ public class SecurityConfiguration {
             throws Exception {
         return config.getAuthenticationManager();
     }
-
 }

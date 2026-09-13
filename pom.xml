@@ -15,6 +15,7 @@
 	<description>daily activities organizer</description>
 	<properties>
 		<java.version>17</java.version>
+		<mapstruct.version>1.6.3</mapstruct.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -82,6 +83,11 @@
 			<scope>test</scope>
 		</dependency>
 
+		<dependency>
+        <groupId>org.mapstruct</groupId>
+        <artifactId>mapstruct</artifactId>
+        <version>${mapstruct.version}</version>
+    </dependency>
 	</dependencies>
 
 	<dependencyManagement>
@@ -118,6 +124,26 @@
 					</excludes>
 				</configuration>
 			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+						<annotationProcessorPaths>
+								<path>
+										<groupId>org.mapstruct</groupId>
+										<artifactId>mapstruct-processor</artifactId>
+										<version>${mapstruct.version}</version>
+								</path>
+
+								<path>
+										<groupId>org.projectlombok</groupId>
+										<artifactId>lombok</artifactId>
+										<version>${lombok.version}</version>
+								</path>
+						</annotationProcessorPaths>
+				</configuration>
+		</plugin>
 		</plugins>
 	</build>
 

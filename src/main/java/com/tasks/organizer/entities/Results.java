@@ -5,29 +5,32 @@ import org.hibernate.annotations.Check;
 import com.tasks.organizer.entities.base.BaseEntity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
-@AllArgsConstructor 
-@NoArgsConstructor 
+@Table (name = "results")
+@Entity 
 @Getter
-@Setter 
+@Setter
+@SuperBuilder 
 public class Results extends BaseEntity {
-  @Size (min = 0, max = 100)
   @Column
-  @Check (constraints = "percentage >= 0 AND percentage <= 100")
+  @Check (constraints = "percentage >= 0 AND percentage <= 1")
   private double percentage;
   
   @Min(0)
   private double pointsEarned;
+
+  @Min(0)
+  private double totalPoints;
 
   @NotNull
   @ManyToOne (fetch = FetchType.LAZY)

@@ -1,5 +1,7 @@
 package com.tasks.organizer.dao.request;
 
+import com.tasks.organizer.entities.Role;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,4 +16,5 @@ public class SignUpRequest {
     private String lastName;
     private String email;
     private String password;
+    private Role role;
 }

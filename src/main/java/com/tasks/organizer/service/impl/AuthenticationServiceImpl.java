@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,15 +27,22 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
+    private Map<String, Object> generateClaims(User user){
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("id", user.getId());
+        extraClaims.put("role", user.getRole().toString());
+        return extraClaims;
+    }
+
     @Override
     public JwtAuthenticationResponse signup(SignUpRequest request) {
-        var user = User.builder().firstName(request.getFirstName()).lastName(request.getLastName())
+        var newUser = User.builder().firstName(request.getFirstName()).lastName(request.getLastName())
                 .email(request.getEmail()).password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.STUDENT).build();
-        User newUser = userRepository.save(user);
-        Map<String, Object> extraClaims = new HashMap<>();
-        extraClaims.put("id", newUser.getId().toString());
-        var jwt = jwtService.generateToken(extraClaims, user);
+
+        User user = userRepository.save(newUser);
+        
+        var jwt = jwtService.generateToken(generateClaims(user), user);
         return JwtAuthenticationResponse.builder().token(jwt).build();
     }
 
@@ -47,9 +53,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         var user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
 
-        Map<String, Object> extraClaims = new HashMap<>();
-        extraClaims.put("id", user.getId());
-        var jwt = jwtService.generateToken(extraClaims, user);
+        var jwt = jwtService.generateToken(generateClaims(user), user);
         return JwtAuthenticationResponse.builder().token(jwt).build();
     }
 }
