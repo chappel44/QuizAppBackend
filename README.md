@@ -1,33 +1,27 @@
 
 
-## Authentication and authorization example using spring boot 3
+## Springboot quiz app backend
 
 ### Technologies used in development
 -   Java
 -   Spring boot
 -   Lombok
--   Spring data mongodb
+-   JPA Hibernate
 -   Spring security
--   MongoDB
+-   Supabase
+-   Postgres
 -   JWT
 
 ----------
 
 ### Motivation
-This project aims to share with the developer community a practical example of JWT authentication and authorization using Spring Security.
+This project is a backend to get me started with learning springboot. I am building this as a project for a friend who needs to give his students practice assessments. Assessments are divided into 3 categories (quizzes, tests, and a random sample of questions. 
 
 ----------
 
 ### Important Tips
 
-- This is just an example, adapt it to your scenario and use case!
-- The authorization configuration should be done from the highest level to the lowest. In other words, the configurations of lower levels authorization should come first, as exemplified in the `SecurityFilterChain` class.
-- The token's key and expiration time must be configured in the `application.properties` file.
+- Routes under the prefix /api/admin are admin only actions such as creating, deleting, and updating quizzes.
+- Routes under the prefix /api/student are meant to give students a way to grade their test submissions and grade individual questions.
+- There are 2 different levels of authorization one for admin and one for students who are able to review topics, submit tests and receive a grading on how they did on the assessment
 
-----------
-
-#### Questions or suggestions?
-
-## Feel free to open a new issue.
-
-**Thanks for visiting this repository!💖**  If you liked it please leave a star.🌟
