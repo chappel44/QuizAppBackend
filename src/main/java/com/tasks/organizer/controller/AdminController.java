@@ -109,6 +109,7 @@ public class AdminController {
       .topicType(topicDTO.getTopicType())
       .name(topicDTO.getName())
       .description(topicDTO.getDescription())
+      .questionPoolSize(topicDTO.getQuestionPoolSize())
       .dueDate(topicDTO.getDueDate()).build();
 
       //Save topic to the repository
@@ -170,6 +171,10 @@ public class AdminController {
     if(!requestTopic.getDueDate().equals(prevTopic.getDueDate()))
     {
       prevTopic.setDueDate(requestTopic.getDueDate());
+    }
+
+    if(!requestTopic.getQuestionPoolSize().equals(prevTopic.getQuestionPoolSize())){
+      prevTopic.setQuestionPoolSize(requestTopic.getQuestionPoolSize());
     }
 
     Map<UUID, QuestionDTO> requestQuestions = new HashMap<>();

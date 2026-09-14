@@ -11,7 +11,7 @@ import lombok.experimental.SuperBuilder;
 
 @MappedSuperclass 
 @Getter @Setter
-@SuperBuilder
+@SuperBuilder (toBuilder = true)
 @NoArgsConstructor 
 public abstract class NamedEntity extends BaseEntity {
   @Nonnull 

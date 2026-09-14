@@ -2,7 +2,6 @@ package com.tasks.organizer.entities;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 import com.tasks.organizer.entities.base.NamedEntity;
 
@@ -13,6 +12,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Min;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
@@ -24,12 +25,13 @@ import lombok.experimental.SuperBuilder;
 @Entity 
 @Getter 
 @Setter 
-@SuperBuilder
+@SuperBuilder (toBuilder = true)
+@AllArgsConstructor 
 @NoArgsConstructor 
 public class Topic extends NamedEntity {
   
   public enum TopicType {
-    TEST, QUIZ, REVIEW
+    TEST, QUIZ, REVIEW, RANDOM_QUESTIONS
   }
 
   @NonNull
@@ -41,6 +43,9 @@ public class Topic extends NamedEntity {
   private List<Question> questions;
 
   private TopicType topicType;
+
+  @Min (1)
+  private Integer questionPoolSize;
 
   @Default
   @Column (nullable = false)

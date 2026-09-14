@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.tasks.organizer.entities.Topic.TopicType;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -26,7 +27,11 @@ public class TopicDTO {
   
   private LocalDateTime dueDate;
 
+  @NotNull 
   private Boolean isActive;
+
+  @Min (1)
+  private Integer questionPoolSize;
 
   private UUID sectionId;
 }

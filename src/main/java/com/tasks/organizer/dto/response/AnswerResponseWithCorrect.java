@@ -8,9 +8,9 @@ import lombok.Getter;
 import lombok.ToString;
 
 @Getter @ToString @Builder 
-public class AnswerResponse {
+  public class AnswerResponseWithCorrect {
   private UUID id;
   private Instant createdAt;
   private String answer;
-  //private Boolean isCorrect;
+  private Boolean isCorrect;
 }
