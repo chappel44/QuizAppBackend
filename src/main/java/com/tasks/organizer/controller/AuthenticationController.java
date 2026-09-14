@@ -27,5 +27,4 @@ public class AuthenticationController {
     public ResponseEntity<JwtAuthenticationResponse> signin(@RequestBody SigninRequest request) {
         return ResponseEntity.ok(authenticationService.signin(request));
     }
-
 }

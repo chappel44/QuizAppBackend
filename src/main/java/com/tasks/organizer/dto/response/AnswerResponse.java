@@ -12,5 +12,5 @@ public class AnswerResponse {
   private UUID id;
   private Instant createdAt;
   private String answer;
-  private Boolean isCorrect;
+  //private Boolean isCorrect;
 }

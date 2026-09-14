@@ -17,7 +17,7 @@ import lombok.experimental.SuperBuilder;
 
 @MappedSuperclass 
 @Getter
-@SuperBuilder
+@SuperBuilder (toBuilder = true)
 @NoArgsConstructor 
 public abstract class BaseEntity {
   @Id
