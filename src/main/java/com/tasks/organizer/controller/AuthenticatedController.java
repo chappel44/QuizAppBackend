@@ -9,8 +9,10 @@ import com.tasks.organizer.controller.AdminController.ApiResponse;
 import com.tasks.organizer.dto.response.SectionOverviewResponse;
 import com.tasks.organizer.dto.response.TopicResponse;
 import com.tasks.organizer.entities.Question;
+import com.tasks.organizer.entities.Role;
 import com.tasks.organizer.entities.Section;
 import com.tasks.organizer.entities.Topic;
+import com.tasks.organizer.entities.User;
 import com.tasks.organizer.entities.Topic.TopicType;
 import com.tasks.organizer.mappers.SectionMapperOverview;
 import com.tasks.organizer.mappers.TopicMapper;
@@ -25,6 +27,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -43,6 +47,10 @@ public class AuthenticatedController {
     Topic topic = topicRepository.findById(topicId)
       .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found" + topicId));
     
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    User user = (User) authentication.getPrincipal();
+    Role userRole = user.getRole();
+
     if(topic.getTopicType().equals(TopicType.RANDOM_QUESTIONS)){
       List<Question> questionPool = new ArrayList<>(topic.getQuestions());
       
@@ -61,7 +69,7 @@ public class AuthenticatedController {
         formattedTopic
       ));
     }
-
+    
     TopicResponse formattedTopic = topicMapper.toResponse(topic);
     
     return ResponseEntity

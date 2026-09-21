@@ -13,12 +13,12 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.Builder.Default;
 import lombok.experimental.SuperBuilder;
 
 @Table (name = "questions")
@@ -27,7 +27,6 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor 
 public class Question extends BaseEntity {
-  @NotNull 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "topic_id", updatable = false, nullable = false)
   @Setter(AccessLevel.NONE)
@@ -36,20 +35,23 @@ public class Question extends BaseEntity {
   @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Answer> answers;
 
-  @Min(0) 
+  @Min(1) 
   @Column (nullable = false)
-  private double points;
+  @Default 
+  private double points = 1;
 
-  @NotNull
   @Size (min = 2, max = 255)
   @Column (length = 255, nullable = false)
   private String question;
 
-  @NotNull
   @Size (min=2, max = 255)
   @Column (length = 255, nullable = false)
   private String answer;
 
   @Column (length = 2048, nullable = true)
   private String imageUrl;
+
+  @Default 
+  @Column (nullable = false)
+  private Boolean isActive = true;
 }
