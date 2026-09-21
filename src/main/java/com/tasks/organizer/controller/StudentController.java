@@ -1,6 +1,7 @@
 package com.tasks.organizer.controller;
 
 import com.tasks.organizer.repository.QuestionRepository;
+import com.tasks.organizer.service.impl.StudentServiceImpl;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +35,7 @@ import com.tasks.organizer.mappers.ResultMapper;
 import com.tasks.organizer.repository.ResultRepository;
 import com.tasks.organizer.repository.TopicRepository;
 import com.tasks.organizer.service.JwtService;
+import com.tasks.organizer.service.StudentService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -43,19 +45,19 @@ import org.springframework.web.bind.annotation.GetMapping;
 @RestController
 @RequestMapping ("/api/student")
 public class StudentController {
+  private final StudentServiceImpl studentServiceImpl;
   private final QuestionRepository questionRepository;
   final TopicRepository topicRepository;
   final ResultRepository resultRepository;
   final QuestionMapper questionMapper;
   final JwtService jwtService;
   final ResultMapper resultMapper;
+  final StudentService studentService;
 
   @PostMapping("/topics/grade-test")
   public ResponseEntity gradeTopic(@Validated 
     @RequestBody GradeTopicDTO request, 
     @RequestParam UUID topicId) {
-    System.out.println("POST HIT");
-
     if(topicId == null){
       new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing topic id" + topicId);
       return ResponseEntity
@@ -138,10 +140,25 @@ public class StudentController {
       ));
     }
 
+    @PostMapping("/attempt")
+    public ResponseEntity createAttempt(@RequestParam(required = true) UUID topicId) {
+      return studentService.createAttempt(topicId);
+    }
+
+    @PostMapping("/attempt/record/question")
+    public ResponseEntity recordAttemptQuestion(@RequestParam(required = true) UUID answerId, @RequestParam (required = true) UUID attemptQuestionId) {
+      return studentService.recordAttemptQuestion(answerId, attemptQuestionId);
+    }
+
+    @PostMapping("/attempt/test/grade")
+    public ResponseEntity postMethodName(@RequestParam (required = true) UUID attemptId) {
+        return studentService.gradeAttempt(attemptId);
+    }
+
     @GetMapping("/question/grade")
     public ResponseEntity getMethodName(@Validated @RequestParam UUID questionId, @RequestParam UUID answerId) {
       Question question = questionRepository.findById(questionId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Could "));
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Question not found."));
 
       Topic questionTopic = question.getTopic();
 
