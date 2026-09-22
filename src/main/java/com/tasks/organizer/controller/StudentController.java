@@ -152,8 +152,14 @@ public class StudentController {
 
     @PostMapping("/attempt/test/grade")
     public ResponseEntity postMethodName(@RequestParam (required = true) UUID attemptId) {
-        return studentService.gradeAttempt(attemptId);
+      return studentService.gradeAttempt(attemptId);
     }
+
+    @GetMapping("/attempt")
+    public ResponseEntity getMethodName(@RequestParam (required = true) UUID attemptId) {
+        return studentService.getAttempt(attemptId);
+    }
+    
 
     @GetMapping("/question/grade")
     public ResponseEntity getMethodName(@Validated @RequestParam UUID questionId, @RequestParam UUID answerId) {

@@ -9,7 +9,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -25,7 +24,7 @@ public class AttemptQuestion extends BaseEntity {
   @JoinColumn(name = "attempt_id", updatable = false)
   private Attempt attempt;
 
-  @OneToOne (fetch = FetchType.LAZY)
+  @ManyToOne (fetch = FetchType.LAZY)
   @JoinColumn(name = "question_id", updatable = false)
   private Question question;
 

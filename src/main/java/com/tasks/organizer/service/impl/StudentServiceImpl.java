@@ -127,11 +127,25 @@ public class StudentServiceImpl implements StudentService{
     AttemptQuestion attemptQuestion = attemptQuestionOpt.get();
 
     Attempt attempt = attemptQuestion.getAttempt();
+
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    User user = (User) authentication.getPrincipal();
+
+    if(attempt.getUser().getId() != user.getId()){
+      return ResponseEntity
+      .status(HttpStatus.UNAUTHORIZED)
+      .body(new ApiResponse<>(
+        403,
+        "Unauthorized",
+        null
+      ));
+    }
+
     if(attempt.isFinalized()){
       return ResponseEntity
       .status(HttpStatus.CONFLICT )
       .body(new ApiResponse<>(
-        404,
+        409,
         "This attempts grade has been finalized",
         attempt.getId()
       ));
@@ -152,8 +166,9 @@ public class StudentServiceImpl implements StudentService{
     List<Answer> answers = question.getAnswers();
 
     double pointEarned = 0;
-    boolean answerFound = false;
-    boolean answerCorrect = false;
+    boolean answerFound = false; //Keep track of if the attempt id in the answer set
+    boolean answerCorrect = false; //Keep track of whether the answer is correct or not.
+    
     for(Answer answer: answers){
       if(answer.getId().equals(answerId)){
         answerFound = true;
@@ -175,7 +190,7 @@ public class StudentServiceImpl implements StudentService{
     }
 
     attemptQuestion.setSubmittedAnswerId(answerId);
-    if(attempt.getTopic().getTopicType() != TopicType.TEST) {
+    if(attempt.getTopic().getTopicType() != TopicType.TEST) { // Only grade question when the topic is not a test
       double totalPointsEarned = attempt.getPointsEarned() + pointEarned;
       double totalPoints = attempt.getTotalPoints();
 
@@ -218,7 +233,21 @@ public class StudentServiceImpl implements StudentService{
 
     Attempt attempt = attemptOpt.get();
 
-    if(attempt.isFinalized()){
+    
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    User user = (User) authentication.getPrincipal();
+
+    if(attempt.getUser().getId() != user.getId()) {
+      return ResponseEntity
+      .status(HttpStatus.UNAUTHORIZED)
+      .body(new ApiResponse<>(
+        403,
+        "Unauthorized",
+        null
+      ));
+    }
+
+    if(attempt.isFinalized()) {
       return ResponseEntity
       .status(HttpStatus.CONFLICT)
       .body(new ApiResponse<>(
@@ -304,5 +333,99 @@ public class StudentServiceImpl implements StudentService{
       "Test grade submitted",
       null
     ));    
+  }
+
+  /*
+  aq.is_correct, aq.submitted_answer_id, q.question, q.points, 
+       a.answer, att.total_points, t.name, t.description
+
+  {
+    Shape returned
+    attempt: {
+      id,
+      total_points,
+      points_earned,
+      attempt_question: [
+        {
+          id,
+          is_correct,
+          submitted_answer_id
+        }
+      ]
+    },
+    topics: {
+      id,
+      name,
+      description,
+      topic_type
+      questions: [
+        {
+          id,
+          question,
+          points,
+          image_url,
+          answers: [
+            {
+              id,
+              answer
+            }
+          ]
+        }
+      ]
+    }
+  }
+  */
+  public ResponseEntity getAttempt(UUID attemptId){
+    
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    User user = (User) authentication.getPrincipal();
+
+    Optional<Attempt> attemptOpt = attemptRepository.findByTopicIdWithAnswers(attemptId);
+
+    if (attemptOpt.isEmpty()) {
+      System.out.println("No attempt found for id: " + attemptId);
+      return ResponseEntity
+      .status(HttpStatus.NOT_FOUND)
+      .body(new ApiResponse<>(404, "Attempt not found", null));
+    }
+
+    Attempt attempt = attemptOpt.get();
+
+    System.out.println("=== Attempt ===");
+    System.out.println("id: " + attempt.getId());
+    System.out.println("createdAt: " + attempt.getCreatedAt());
+    System.out.println("pointsEarned: " + attempt.getPointsEarned());
+    System.out.println("totalPoints: " + attempt.getTotalPoints());
+    System.out.println("percentage: " + attempt.getPercentage());
+    System.out.println("isFinalized: " + attempt.isFinalized());
+    System.out.println("userId: " + attempt.getUser().getId());
+
+    Topic topic = attempt.getTopic();
+    System.out.println("=== Topic ===");
+    System.out.println("id: " + topic.getId());
+    System.out.println("name: " + topic.getName());
+    System.out.println("description: " + topic.getDescription());
+    System.out.println("topicType: " + topic.getTopicType());
+    System.out.println("questionPoolSize: " + topic.getQuestionPoolSize());
+    System.out.println("isActive: " + topic.getIsActive());
+    System.out.println("dueDate: " + topic.getDueDate());
+
+    System.out.println("=== AttemptQuestions ===");
+    for (AttemptQuestion aq : attempt.getAttemptQuestions()) {
+      System.out.println("--- AttemptQuestion ---");
+      System.out.println("id: " + aq.getId());
+      System.out.println("createdAt: " + aq.getCreatedAt());
+      System.out.println("questionId: " + aq.getQuestion().getId()); // safe: id-only access, no extra query
+      System.out.println("isCorrect: " + aq.getIsCorrect());
+      System.out.println("submittedAnswerId: " + aq.getSubmittedAnswerId());
+    }
+
+    return ResponseEntity
+    .status(HttpStatus.OK)
+    .body(new ApiResponse<>(
+      200,
+      "Test grade submitted",
+      null
+    ));
   }
 }
