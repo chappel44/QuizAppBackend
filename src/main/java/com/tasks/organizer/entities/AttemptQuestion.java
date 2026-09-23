@@ -16,9 +16,7 @@ import lombok.Builder.Default;
 import lombok.experimental.SuperBuilder;
 
 @Entity
-@SuperBuilder 
-@NoArgsConstructor 
-@Getter
+@Getter @Setter @SuperBuilder  @NoArgsConstructor 
 public class AttemptQuestion extends BaseEntity {
   @ManyToOne (fetch = FetchType.LAZY)
   @JoinColumn(name = "attempt_id", updatable = false)

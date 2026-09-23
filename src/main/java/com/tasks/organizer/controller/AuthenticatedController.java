@@ -47,10 +47,6 @@ public class AuthenticatedController {
     Topic topic = topicRepository.findById(topicId)
       .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found" + topicId));
     
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    User user = (User) authentication.getPrincipal();
-    Role userRole = user.getRole();
-
     if(topic.getTopicType().equals(TopicType.RANDOM_QUESTIONS)){
       List<Question> questionPool = new ArrayList<>(topic.getQuestions());
       

@@ -15,7 +15,7 @@ public class QuestionResponse {
 
   private String question;
 
-  private String answer;
+  //private String answer;
 
   private String imageUrl;
 
