@@ -151,12 +151,12 @@ public class StudentController {
     }
 
     @PostMapping("/attempt/test/grade")
-    public ResponseEntity postMethodName(@RequestParam (required = true) UUID attemptId) {
+    public ResponseEntity gradeAttempt(@RequestParam (required = true) UUID attemptId) {
       return studentService.gradeAttempt(attemptId);
     }
 
     @GetMapping("/attempt")
-    public ResponseEntity getMethodName(@RequestParam (required = true) UUID attemptId) {
+    public ResponseEntity getAttempt(@RequestParam (required = true) UUID attemptId) {
         return studentService.getAttempt(attemptId);
     }
     

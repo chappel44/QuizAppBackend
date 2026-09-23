@@ -18,13 +18,19 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.tasks.organizer.controller.AdminController.ApiResponse;
+import com.tasks.organizer.dto.response.AttemptResponse;
+import com.tasks.organizer.dto.response.GetAttemptResponse;
+import com.tasks.organizer.dto.response.TopicResponse;
 import com.tasks.organizer.entities.Answer;
 import com.tasks.organizer.entities.Attempt;
 import com.tasks.organizer.entities.AttemptQuestion;
 import com.tasks.organizer.entities.Question;
+import com.tasks.organizer.entities.Role;
 import com.tasks.organizer.entities.Topic;
 import com.tasks.organizer.entities.User;
 import com.tasks.organizer.entities.Topic.TopicType;
+import com.tasks.organizer.mappers.AttemptMapper;
+import com.tasks.organizer.mappers.TopicMapper;
 import com.tasks.organizer.repository.AttemptQuestionRepository;
 import com.tasks.organizer.repository.AttemptRepository;
 import com.tasks.organizer.repository.QuestionRepository;
@@ -43,10 +49,13 @@ public class StudentServiceImpl implements StudentService{
   final AttemptQuestionRepository attemptQuestionRepository;
   final QuestionRepository questionRepository;
   final ResultRepository resultRepository;
+  final TopicMapper topicMapper;
+  final AttemptMapper attemptMapper;
 
   @Transactional
   public ResponseEntity<ApiResponse<?>> createAttempt(UUID topicId) {
     Optional<Topic> topicOpt = topicRepository.findById(topicId);
+
 
     if (topicOpt.isEmpty()) {
       return ResponseEntity
@@ -237,7 +246,7 @@ public class StudentServiceImpl implements StudentService{
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
-    if(attempt.getUser().getId() != user.getId()) {
+    if(!attempt.getUser().getId().equals(user.getId())) {
       return ResponseEntity
       .status(HttpStatus.UNAUTHORIZED)
       .body(new ApiResponse<>(
@@ -336,16 +345,15 @@ public class StudentServiceImpl implements StudentService{
   }
 
   /*
-  aq.is_correct, aq.submitted_answer_id, q.question, q.points, 
-       a.answer, att.total_points, t.name, t.description
-
+  Query params: attemptId
+  Expected Response:
   {
     Shape returned
     attempt: {
       id,
       total_points,
       points_earned,
-      attempt_question: [
+      attempt_questions: [
         {
           id,
           is_correct,
@@ -357,7 +365,7 @@ public class StudentServiceImpl implements StudentService{
       id,
       name,
       description,
-      topic_type
+      topic_type,
       questions: [
         {
           id,
@@ -375,8 +383,8 @@ public class StudentServiceImpl implements StudentService{
     }
   }
   */
+
   public ResponseEntity getAttempt(UUID attemptId){
-    
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
@@ -391,41 +399,46 @@ public class StudentServiceImpl implements StudentService{
 
     Attempt attempt = attemptOpt.get();
 
-    System.out.println("=== Attempt ===");
-    System.out.println("id: " + attempt.getId());
-    System.out.println("createdAt: " + attempt.getCreatedAt());
-    System.out.println("pointsEarned: " + attempt.getPointsEarned());
-    System.out.println("totalPoints: " + attempt.getTotalPoints());
-    System.out.println("percentage: " + attempt.getPercentage());
-    System.out.println("isFinalized: " + attempt.isFinalized());
-    System.out.println("userId: " + attempt.getUser().getId());
+    if(!attempt.getUser().getId().equals(user.getId()) && user.getRole() != Role.ADMIN){
+      return ResponseEntity
+      .status(HttpStatus.UNAUTHORIZED)
+      .body(new ApiResponse<>(
+        403,
+        "Unauthorized",
+        null
+      ));
+    }
 
     Topic topic = attempt.getTopic();
-    System.out.println("=== Topic ===");
-    System.out.println("id: " + topic.getId());
-    System.out.println("name: " + topic.getName());
-    System.out.println("description: " + topic.getDescription());
-    System.out.println("topicType: " + topic.getTopicType());
-    System.out.println("questionPoolSize: " + topic.getQuestionPoolSize());
-    System.out.println("isActive: " + topic.getIsActive());
-    System.out.println("dueDate: " + topic.getDueDate());
+
+    List<UUID> attemptQuestionIds = new ArrayList<>();
 
     System.out.println("=== AttemptQuestions ===");
     for (AttemptQuestion aq : attempt.getAttemptQuestions()) {
-      System.out.println("--- AttemptQuestion ---");
-      System.out.println("id: " + aq.getId());
-      System.out.println("createdAt: " + aq.getCreatedAt());
-      System.out.println("questionId: " + aq.getQuestion().getId()); // safe: id-only access, no extra query
-      System.out.println("isCorrect: " + aq.getIsCorrect());
-      System.out.println("submittedAnswerId: " + aq.getSubmittedAnswerId());
+      attemptQuestionIds.add(aq.getQuestion().getId());
     }
+
+    TopicResponse formattedTopic = TopicResponse.builder().id(topic.getId())
+    .createdAt(topic.getCreatedAt())
+    .name(topic.getName())
+    .description(topic.getName())
+    .isActive(topic.getIsActive())
+    .dueDate(topic.getDueDate())
+    .topicType(topic.getTopicType())
+    .build();
+
+    AttemptResponse attemptResponse = attemptMapper.toResponse(attempt);
+
+    GetAttemptResponse getAttemptResponse = GetAttemptResponse.builder()
+    .attempt(attemptResponse)
+    .topic(formattedTopic).build();
 
     return ResponseEntity
     .status(HttpStatus.OK)
     .body(new ApiResponse<>(
       200,
-      "Test grade submitted",
-      null
+      "Attempt retrieval successful",
+      getAttemptResponse
     ));
   }
 }
