@@ -1,6 +1,5 @@
 package com.tasks.organizer.repository;
 
-import java.lang.foreign.Linker.Option;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,4 +21,6 @@ public interface AttemptRepository extends JpaRepository<Attempt, UUID> {
   WHERE att.id = :attemptId
   """)
   Optional<Attempt> findByTopicIdWithAnswers(@Param("attemptId") UUID attemptId);
+
+  Optional<List<Attempt>> findByUserIdAndTopicId(UUID userId, UUID topicId);
 }

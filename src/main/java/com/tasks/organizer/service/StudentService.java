@@ -9,4 +9,5 @@ public interface StudentService {
   ResponseEntity recordAttemptQuestion(UUID answerId, UUID attemptQuestionId);
   ResponseEntity gradeAttempt(UUID attemptId);
   ResponseEntity getAttempt(UUID attemptId);
+  ResponseEntity getTopicAndAttempts(UUID topicId);
 }
