@@ -157,9 +157,13 @@ public class StudentController {
 
     @GetMapping("/attempt")
     public ResponseEntity getAttempt(@RequestParam (required = true) UUID attemptId) {
-        return studentService.getAttempt(attemptId);
+      return studentService.getAttempt(attemptId);
     }
-    
+
+    @GetMapping("/attempts")
+    public ResponseEntity getAttemptsWithTopic(@RequestParam (required = true) UUID topicId) {
+      return studentService.getTopicAndAttempts(topicId);
+    }
 
     @GetMapping("/question/grade")
     public ResponseEntity getMethodName(@Validated @RequestParam UUID questionId, @RequestParam UUID answerId) {

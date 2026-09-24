@@ -8,6 +8,8 @@ import com.tasks.organizer.entities.base.NamedEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
@@ -42,6 +44,8 @@ public class Topic extends NamedEntity {
   @OneToMany(mappedBy = "topic", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Question> questions;
 
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
   private TopicType topicType;
 
   @Min (1)

@@ -274,11 +274,11 @@ public class TopicServiceImpl implements TopicService {
     questionRepository.saveAll(questionsToAdd);
       
     return ResponseEntity
-      .status(HttpStatus.OK)
-      .body(new ApiResponse<>(
-            200,
-            "Successfully updated topic",
-            null 
-        ));
+    .status(HttpStatus.OK)
+    .body(new ApiResponse<>(
+      200,
+      "Successfully updated topic",
+      null 
+    ));
   }
 }

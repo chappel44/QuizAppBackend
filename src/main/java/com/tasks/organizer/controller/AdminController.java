@@ -14,7 +14,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 
 import java.util.UUID;
-//import static java.lang.System.out;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;

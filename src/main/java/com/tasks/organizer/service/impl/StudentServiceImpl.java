@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import com.tasks.organizer.controller.AdminController.ApiResponse;
 import com.tasks.organizer.dto.response.AttemptResponse;
+import com.tasks.organizer.dto.response.AttemptsWithTopicResponse;
 import com.tasks.organizer.dto.response.GetAttemptResponse;
 import com.tasks.organizer.dto.response.TopicResponse;
 import com.tasks.organizer.entities.Answer;
@@ -439,6 +440,63 @@ public class StudentServiceImpl implements StudentService{
       200,
       "Attempt retrieval successful",
       getAttemptResponse
+    ));
+  }
+
+  public ResponseEntity getTopicAndAttempts(UUID topicId){
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    User user = (User) authentication.getPrincipal();
+
+    Optional<Topic> topicOpt = topicRepository.findById(topicId);
+
+    if(topicOpt.isEmpty()){
+      return ResponseEntity
+      .status(HttpStatus.NOT_FOUND)
+      .body(new ApiResponse<>(404, "Topic not found", null));
+    }
+
+    Topic topic = topicOpt.get();
+    
+    if(topic.getIsActive().equals(false)){
+      return ResponseEntity
+      .status(HttpStatus.CONFLICT)
+      .body(new ApiResponse<>(409, "Topic is inactive", null));
+    }
+
+    Optional<List<Attempt>> currentAttemptsOpt = attemptRepository.findByUserIdAndTopicId(user.getId(), topic.getId());
+
+    if(currentAttemptsOpt.isEmpty()){
+      return ResponseEntity
+      .status(HttpStatus.NOT_FOUND)
+      .body(new ApiResponse<>(404, "Attempts with topic not found", null)); 
+    }
+
+    List<Attempt> currentAttempts = currentAttemptsOpt.get();
+    List<AttemptResponse> attemptResponses = new ArrayList<>();
+    for (Attempt att: currentAttempts){
+      AttemptResponse attResponse = AttemptResponse.builder()
+      .id(att.getId())
+      .percentage(att.getPercentage())
+      .totalPoints(att.getTotalPoints())
+      .pointsEarned(att.getPointsEarned()).build();
+
+      attemptResponses.add(attResponse);
+    }
+
+    TopicResponse topicResponse = topicMapper.toResponse(topic);
+    topicResponse.setQuestions(null);
+
+    AttemptsWithTopicResponse attemptsWithTopicResponse = new AttemptsWithTopicResponse();
+
+    attemptsWithTopicResponse.setAttempts(attemptResponses);
+    attemptsWithTopicResponse.setTopic(topicResponse);
+
+    return ResponseEntity
+    .status(HttpStatus.OK)
+    .body(new ApiResponse<>(
+      200,
+      "Attempts and topic successfully retrieved",
+      attemptsWithTopicResponse
     ));
   }
 }
