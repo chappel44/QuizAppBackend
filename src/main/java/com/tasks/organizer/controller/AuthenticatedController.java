@@ -82,9 +82,9 @@ public class AuthenticatedController {
     return ResponseEntity
     .status(HttpStatus.OK)
     .body(new ApiResponse<>(
-          200,
-          "Section overview",
-          overview
-      ));
+      200,
+      "Section overview",
+      overview
+    ));
   }
 }

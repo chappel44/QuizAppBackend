@@ -39,6 +39,7 @@ import com.tasks.organizer.service.StudentService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 
 
 @RequiredArgsConstructor 
@@ -145,12 +146,12 @@ public class StudentController {
       return studentService.createAttempt(topicId);
     }
 
-    @PostMapping("/attempt/record/question")
+    @PatchMapping("/attempt/record/question")
     public ResponseEntity recordAttemptQuestion(@RequestParam(required = true) UUID answerId, @RequestParam (required = true) UUID attemptQuestionId) {
       return studentService.recordAttemptQuestion(answerId, attemptQuestionId);
     }
 
-    @PostMapping("/attempt/test/grade")
+    @PatchMapping("/attempt/test/grade")
     public ResponseEntity gradeAttempt(@RequestParam (required = true) UUID attemptId) {
       return studentService.gradeAttempt(attemptId);
     }

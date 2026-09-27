@@ -23,13 +23,10 @@ import lombok.Setter;
 import lombok.Builder.Default;
 import lombok.experimental.SuperBuilder;
 
-@Table (name = "topics")
-@Entity 
-@Getter 
-@Setter 
+@Table (name = "topics") @Entity 
+@Getter @Setter 
 @SuperBuilder (toBuilder = true)
-@AllArgsConstructor 
-@NoArgsConstructor 
+@AllArgsConstructor @NoArgsConstructor 
 public class Topic extends NamedEntity {
   
   public enum TopicType {
