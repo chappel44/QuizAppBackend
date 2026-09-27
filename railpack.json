@@ -1,9 +1,13 @@
 {
   "$schema": "https://schema.railpack.com/",
+  "packages": {
+    "java": "17",
+    "maven": "latest"
+  },
   "steps": {
     "build": {
       "commands": [
-        "echo '--- ENV CHECK ---'; echo JAVA_HOME=$JAVA_HOME; which java; readlink -f $(which java); echo '--- /etc/mavenrc ---'; cat /etc/mavenrc 2>/dev/null || echo none; echo '--- ~/.mavenrc ---'; cat ~/.mavenrc 2>/dev/null || echo none; echo '--- .mvn/jvm.config ---'; cat .mvn/jvm.config 2>/dev/null || echo none; echo '--- .mvn/wrapper/maven-wrapper.properties ---'; cat .mvn/wrapper/maven-wrapper.properties 2>/dev/null || echo none"
+        "mvn -DoutputFile=target/mvn-dependency-list.log -B -DskipTests clean dependency:list install -Pproduction"
       ]
     }
   }
