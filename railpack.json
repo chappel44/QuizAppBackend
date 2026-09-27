@@ -1,5 +1,8 @@
 {
   "$schema": "https://schema.railpack.com/",
+  "packages": {
+    "java": "17"
+  },
   "steps": {
     "build": {
       "commands": [
