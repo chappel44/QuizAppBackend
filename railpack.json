@@ -3,7 +3,7 @@
   "steps": {
     "build": {
       "commands": [
-        "unset JAVA_HOME && ./mvnw -DoutputFile=target/mvn-dependency-list.log -B -DskipTests clean dependency:list install -Pproduction"
+        "export JAVA_HOME=$(dirname $(dirname $(readlink -f $(command -v java)))) && ./mvnw -DoutputFile=target/mvn-dependency-list.log -B -DskipTests clean dependency:list install -Pproduction"
       ]
     }
   }
