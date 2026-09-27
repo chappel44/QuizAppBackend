@@ -141,7 +141,7 @@ public class StudentServiceImpl implements StudentService{
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
-    if(attempt.getUser().getId() != user.getId()){
+    if(!attempt.getUser().getId().equals(user.getId())){
       return ResponseEntity
       .status(HttpStatus.UNAUTHORIZED)
       .body(new ApiResponse<>(
@@ -200,6 +200,7 @@ public class StudentServiceImpl implements StudentService{
     }
 
     attemptQuestion.setSubmittedAnswerId(answerId);
+
     if(attempt.getTopic().getTopicType() != TopicType.TEST) { // Only grade question when the topic is not a test
       double totalPointsEarned = attempt.getPointsEarned() + pointEarned;
       double totalPoints = attempt.getTotalPoints();
@@ -242,7 +243,6 @@ public class StudentServiceImpl implements StudentService{
     }
 
     Attempt attempt = attemptOpt.get();
-
     
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
@@ -268,6 +268,7 @@ public class StudentServiceImpl implements StudentService{
     }
 
     Optional<Topic> attemptTopicOpt = topicRepository.findById(attempt.getTopic().getId()); 
+    
     if(!attemptTopicOpt.isPresent()){
       return ResponseEntity
       .status(HttpStatus.NOT_FOUND)
