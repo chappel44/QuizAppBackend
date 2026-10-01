@@ -19,6 +19,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 import lombok.Builder.Default;
 import lombok.experimental.SuperBuilder;
 
@@ -26,7 +27,7 @@ import lombok.experimental.SuperBuilder;
 @Table (name = "attempt")
 @SuperBuilder 
 @NoArgsConstructor 
-@Getter @Setter 
+@Getter @Setter @ToString 
 public class Attempt extends BaseEntity {
   @ManyToOne (fetch = FetchType.LAZY)
   @JoinColumn(name = "topic_id", updatable = false, nullable = false)

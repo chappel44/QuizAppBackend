@@ -39,7 +39,7 @@ import com.tasks.organizer.repository.ResultRepository;
 import com.tasks.organizer.repository.TopicRepository;
 import com.tasks.organizer.service.StudentService;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 
 @Service 
@@ -336,7 +336,7 @@ public class StudentServiceImpl implements StudentService{
     attempt.setPercentage(percentage);
     attempt.setPointsEarned(pointsEarned);
     attempt.setFinalized(true);
-
+    System.out.println("ATTEMPT SHOULD BE FINALIZED:"+ attempt.isFinalized());
     return ResponseEntity
     .status(HttpStatus.OK)
     .body(new ApiResponse<>(
@@ -415,7 +415,6 @@ public class StudentServiceImpl implements StudentService{
 
     List<UUID> attemptQuestionIds = new ArrayList<>();
 
-    System.out.println("=== AttemptQuestions ===");
     for (AttemptQuestion aq : attempt.getAttemptQuestions()) {
       attemptQuestionIds.add(aq.getQuestion().getId());
     }
@@ -430,6 +429,8 @@ public class StudentServiceImpl implements StudentService{
     .build();
 
     AttemptResponse attemptResponse = attemptMapper.toResponse(attempt);
+    System.out.println(attemptResponse);
+    System.out.println(attempt);
 
     GetAttemptResponse getAttemptResponse = GetAttemptResponse.builder()
     .attempt(attemptResponse)
