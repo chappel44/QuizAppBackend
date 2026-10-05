@@ -54,7 +54,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .token(jwt)
                 .build()
         );
-
     }
 
     @Override

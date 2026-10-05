@@ -259,3 +259,252 @@ Deletes a section.
 | Param | Type | Required | Description |
 |---|---|---|---|
 | `sectionId` | UUID | Yes | Section to delete |
+
+## Authenticated: Sections
+
+### Get section overview
+
+`GET /api/authenticated/section-overview`
+
+Returns the sections and the topics that belong to each one. Used by the frontend for display purposes.
+
+**Response**
+
+```jsonc
+{
+  "id": "uuid",
+  "name": "string",
+  "description": "string",
+  "topics": [
+    {
+      "id": "uuid",
+      "name": "string",
+      "description": "string",
+      "topic": "TEST" // TEST | QUIZ | REVIEW | RANDOM_QUESTIONS
+    }
+  ]
+}
+```
+
+---
+
+## Student: Attempts
+
+All routes in this section require an authenticated user. Attempts are always tied to the user making the request.
+
+### Response format
+
+Unless noted otherwise, these routes return the standard wrapper:
+
+```jsonc
+{
+  "status": 200,
+  "message": "string",
+  "data": {} // route-specific, null on errors
+}
+```
+
+| Status | Meaning |
+|---|---|
+| `200` | Success |
+| `403` | The attempt does not belong to the authenticated user |
+| `404` | The topic, attempt, or attempt question was not found |
+| `409` | The request conflicts with the current state (for example, an inactive topic or an already-finalized attempt) |
+
+---
+
+### Create an attempt
+
+`POST /api/student/attempt`
+
+Creates a new attempt on a topic for the authenticated user.
+
+**Query params**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `topicId` | UUID | Yes | Topic to attempt |
+
+**Rules**
+
+1. `topicId` must belong to an existing topic.
+2. The topic must be active.
+
+**Response `data`**
+
+```jsonc
+{
+  "id": "uuid" // the new attempt's id, used for the frontend redirect
+}
+```
+
+**Status codes:** `200`, `404`
+
+---
+
+### List attempts for a topic
+
+`GET /api/student/attempts`
+
+Returns all of the authenticated user's attempts on a topic, along with the topic itself.
+
+**Query params**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `topicId` | UUID | Yes | Topic to list attempts for |
+
+**Rules**
+
+1. `topicId` must belong to an existing topic.
+2. The topic must be active.
+
+**Response `data`**
+
+```jsonc
+{
+  "attempts": [
+    {
+      "id": "uuid",
+      "totalPoints": 10.0,
+      "pointsEarned": 8.5,
+      "percentage": 85.0,
+      "attemptQuestions": [],
+      "finalized": true
+    }
+  ],
+  "topic": {
+    "id": "uuid",
+    "createdAt": "2026-10-05T12:00:00",
+    "name": "string",
+    "description": "string",
+    "topicType": "TEST",
+    "dueDate": "2026-12-03T18:30:00",
+    "isActive": true,
+    "questions": []
+  }
+}
+```
+
+**Status codes:** `200`, `404`, `409`
+
+---
+
+### Get an attempt
+
+`GET /api/student/attempt`
+
+Returns a single attempt with its questions, the answer choices, the student's submitted answers, and the attempt's topic.
+
+**Query params**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `attemptId` | UUID | Yes | Attempt to fetch |
+
+**Rules**
+
+1. `attemptId` must belong to an existing attempt.
+2. The attempt must belong to the authenticated user.
+
+**Response `data`**
+
+```jsonc
+{
+  "attempt": {
+    "id": "uuid",
+    "totalPoints": 10.0,
+    "pointsEarned": 8.5,
+    "percentage": 85.0,
+    "attemptQuestions": [
+      {
+        "id": "uuid",
+        "isCorrect": true,
+        "submittedAnswerId": "uuid",
+        "question": {
+          "id": "uuid",
+          "points": 1.0,
+          "question": "string",
+          "imageUrl": "string",
+          "answers": [
+            {
+              "id": "uuid",
+              "createdAt": "2026-10-05T12:00:00",
+              "answer": "string"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "topic": {
+    "id": "uuid",
+    "createdAt": "2026-10-05T12:00:00",
+    "name": "string",
+    "description": "string",
+    "topicType": "TEST",
+    "dueDate": "2026-12-03T18:30:00",
+    "isActive": true,
+    "questions": []
+  }
+}
+```
+
+**Status codes:** `200`, `403`, `404`
+
+---
+
+### Record an answer to a question
+
+`PATCH /api/student/attempt/record/question`
+
+Records the answer a student selected for a question in an attempt. For non-test topics, it also returns whether the answer was correct.
+
+**Query params**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `topicId` | UUID | Yes | Topic the attempt belongs to |
+
+**Rules**
+
+1. The attempt must belong to the authenticated user.
+2. The attempt must not be finalized. Answers can't be recorded on a finalized attempt.
+3. `answerId` must be in the answer set of the attempt question.
+4. `attemptQuestionId` must belong to an existing attempt question.
+5. Feedback is only returned when the topic type is **not** `TEST`.
+
+**Response `data`**
+
+```jsonc
+{
+  "answerCorrect": true // boolean for QUIZ, REVIEW, RANDOM_QUESTIONS; null for TEST
+}
+```
+
+**Status codes:** `200`, `403`, `404`, `409`
+
+---
+
+### Grade a test
+
+`PATCH /api/student/attempt/test/grade`
+
+Submits a test attempt and grades every question at once. Records the points earned and the percentage, and finalizes the attempt.
+
+**Query params**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `attemptId` | UUID | Yes | Attempt to grade |
+
+**Rules**
+
+1. A test can only be graded once. Regrading is not allowed.
+2. The attempt must belong to the authenticated user.
+3. The attempt's topic must be of type `TEST`.
+4. `attemptId` must belong to an existing attempt.
+
+**Response `data`:** `null`
+
+**Status codes:** `200`, `403`, `404`, `409`

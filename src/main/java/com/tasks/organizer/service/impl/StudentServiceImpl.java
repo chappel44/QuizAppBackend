@@ -57,7 +57,6 @@ public class StudentServiceImpl implements StudentService{
   public ResponseEntity<ApiResponse<?>> createAttempt(UUID topicId) {
     Optional<Topic> topicOpt = topicRepository.findById(topicId);
 
-
     if (topicOpt.isEmpty()) {
       return ResponseEntity
       .status(HttpStatus.NOT_FOUND)
@@ -65,6 +64,12 @@ public class StudentServiceImpl implements StudentService{
     }
 
     Topic topic = topicOpt.get();
+
+    if(topic.getIsActive().equals(false)){
+      return ResponseEntity
+      .status(HttpStatus.NOT_FOUND)
+      .body(new ApiResponse<>(409, "Topic is inactive", null));
+    }
 
     // Start with only active questions
     List<Question> activeQuestions = topic.getQuestions().stream()
@@ -80,7 +85,7 @@ public class StudentServiceImpl implements StudentService{
         int randomIndex = ThreadLocalRandom.current().nextInt(0, selectedQuestions.size());
         selectedQuestions.remove(randomIndex);
       }
-    } 
+    }
     else {
       selectedQuestions = activeQuestions;
     }
@@ -274,7 +279,7 @@ public class StudentServiceImpl implements StudentService{
       .status(HttpStatus.NOT_FOUND)
       .body(new ApiResponse<>(
         404,
-        "Topic associated with attemp not found",
+        "Topic associated with attempt not found",
         null
       ));
     }
@@ -385,7 +390,6 @@ public class StudentServiceImpl implements StudentService{
     }
   }
   */
-
   public ResponseEntity getAttempt(UUID attemptId){
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
