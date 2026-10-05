@@ -464,7 +464,8 @@ Records the answer a student selected for a question in an attempt. For non-test
 
 | Param | Type | Required | Description |
 |---|---|---|---|
-| `topicId` | UUID | Yes | Topic the attempt belongs to |
+| `answerId` | UUID | Yes | Topic the attempt belongs to |
+| `attemptQuestionId` | UUID | Yes | Topic the attempt belongs to |
 
 **Rules**
 
