@@ -42,6 +42,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             return ResponseEntity.badRequest().build();
         }
 
+        if(request.getPassword().length() < 2){
+            return ResponseEntity.badRequest().build();
+        }
+
         var newUser = User.builder().firstName(request.getFirstName()).lastName(request.getLastName())
             .email(request.getEmail()).password(passwordEncoder.encode(request.getPassword()))
             .role(Role.STUDENT).build();
@@ -59,9 +63,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     public JwtAuthenticationResponse signin(SigninRequest request) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+            new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         var user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
+            .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
 
         var jwt = jwtService.generateToken(generateClaims(user), user);
         return JwtAuthenticationResponse.builder().token(jwt).build();
