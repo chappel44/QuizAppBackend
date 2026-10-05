@@ -55,4 +55,4 @@ public class StudentController {
   public ResponseEntity getAttemptsWithTopic(@RequestParam (required = true) UUID topicId) {
     return studentService.getTopicAndAttempts(topicId);
   }
-  }
+}

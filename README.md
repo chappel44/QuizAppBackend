@@ -122,6 +122,32 @@ Updates an existing topic.
 
 ---
 
+### Delete a topic
+
+`DELETE /api/admin/topics`
+
+Deletes a topic and everything that belongs to it.
+
+**Query params**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `topicId` | UUID | Yes | Topic to delete |
+
+**Cascade behavior**
+
+Deleting a topic also permanently deletes its related data:
+
+```
+Topic
+├── questions
+│   └── answers
+└── attempts
+    └── attempt_questions
+```
+
+---
+
 ### Field reference
 
 **`topic`**
@@ -154,3 +180,82 @@ Updates an existing topic.
 | `id` | String | No (PATCH only) | If omitted, the answer is deleted and reinserted |
 | `answer` | String | Yes | |
 | `isCorrect` | Boolean | Yes | |
+
+----------
+
+## Admin: Sections
+
+Base path: `/api/admin/section`
+
+Sections are the groups that topics belong to.
+
+### Create a section
+
+`POST /api/admin/section`
+
+Creates a new section that topics can be grouped into.
+
+**Request body**
+
+```jsonc
+{
+  "name": "string",        // required, max 50 characters
+  "description": "string"  // optional, max 255 characters
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `name` | String | Yes | Max 50 characters |
+| `description` | String | No | Max 255 characters |
+
+---
+
+### Update a section
+
+`PATCH /api/admin/section`
+
+Updates the name, description, and active status of an existing section.
+
+**Query params**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `sectionId` | UUID | Yes | Section to update |
+
+**Request body**
+
+```jsonc
+{
+  "name": "string",
+  "description": "string",
+  "isActive": true // optional, defaults to true
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `name` | String | Yes | Max 50 characters |
+| `description` | String | No | Max 255 characters |
+| `isActive` | Boolean | No | Defaults to `true` if omitted |
+
+**Responses**
+
+| Status | Message |
+|---|---|
+| `200` | Section updated successfully |
+| `404` | Section not found |
+
+---
+
+### Delete a section
+
+`DELETE /api/admin/section`
+
+Deletes a section.
+
+**Query params**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `sectionId` | UUID | Yes | Section to delete |

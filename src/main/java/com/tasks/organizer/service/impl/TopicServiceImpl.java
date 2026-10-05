@@ -122,20 +122,9 @@ public class TopicServiceImpl implements TopicService {
     
     TopicDTO requestTopic = request.getTopic();
     
-    //Update name if changed
-    if(!prevTopic.getName().equals(requestTopic.getName())){
-      prevTopic.setName(requestTopic.getName());
-    }
-
-    //Update description if changed
-    if(!prevTopic.getDescription().equals(requestTopic.getDescription())){
-      prevTopic.setDescription(requestTopic.getDescription());
-    }
-
-    //Update whether the topic is a test, quiz or review
-    if(prevTopic.getTopicType() != requestTopic.getTopicType()){
-      prevTopic.setTopicType(requestTopic.getTopicType());
-    }
+    prevTopic.setName(requestTopic.getName());
+    prevTopic.setDescription(requestTopic.getDescription());
+    prevTopic.setTopicType(requestTopic.getTopicType());
 
     //Update which section a topic is associated with
     if(!prevTopic.getSection().getId().equals(requestTopic.getSectionId())){
@@ -146,21 +135,9 @@ public class TopicServiceImpl implements TopicService {
       prevTopic.setSection(updatedSection);
     }
 
-    //Change the topic being active or inactive
-    if(!requestTopic.getIsActive().equals(prevTopic.getIsActive()))
-    {
-      prevTopic.setIsActive(requestTopic.getIsActive());
-    }
-
-    //Update the due date
-    if(!requestTopic.getDueDate().equals(prevTopic.getDueDate()))
-    {
-      prevTopic.setDueDate(requestTopic.getDueDate());
-    }
-
-    if(!requestTopic.getQuestionPoolSize().equals(prevTopic.getQuestionPoolSize())){
-      prevTopic.setQuestionPoolSize(requestTopic.getQuestionPoolSize());
-    }
+    prevTopic.setIsActive(requestTopic.getIsActive());
+    prevTopic.setDueDate(requestTopic.getDueDate());
+    prevTopic.setQuestionPoolSize(requestTopic.getQuestionPoolSize());
 
     Map<UUID, QuestionDTO> requestQuestions = new HashMap<>();
     List<Question> questionsToAdd = new ArrayList<>();
@@ -191,18 +168,10 @@ public class TopicServiceImpl implements TopicService {
       else { //Check for question modifications
         QuestionDTO requestQuestion = requestQuestions.get(prevQuestion.getId());
 
-        if (!requestQuestion.getQuestion().equals(prevQuestion.getQuestion())){
-          prevQuestion.setQuestion(requestQuestion.getQuestion());
-        }
-        if(!requestQuestion.getAnswer().equals(prevQuestion.getAnswer())){
-          prevQuestion.setAnswer(requestQuestion.getAnswer());
-        }
-        if(requestQuestion.getPoints() != prevQuestion.getPoints()){
-          prevQuestion.setPoints(requestQuestion.getPoints());
-        }
-        if(!requestQuestion.getImageUrl().equals(prevQuestion.getImageUrl())){
-          prevQuestion.setImageUrl(requestQuestion.getImageUrl());
-        }
+        prevQuestion.setQuestion(requestQuestion.getQuestion());
+        prevQuestion.setAnswer(requestQuestion.getAnswer());
+        prevQuestion.setPoints(requestQuestion.getPoints());
+        prevQuestion.setImageUrl(requestQuestion.getImageUrl());
 
         Map<UUID, AnswerDTO> requestAnswers = new HashMap<>();
 
@@ -213,13 +182,12 @@ public class TopicServiceImpl implements TopicService {
           for(AnswerDTO answer : requestQuestion.getAnswers()) {
             if(answer.getIsCorrect()){ //Ensure no duplicate correct answers are inserted
               if (trueFound) {
-                
                 return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ApiResponse<>(
-                    400,
-                    "Duplicate correct answer found on question ",
-                    answer
+                  400,
+                  "Duplicate correct answer found on question ",
+                  answer
                 ));
               }
               
@@ -255,12 +223,9 @@ public class TopicServiceImpl implements TopicService {
           if(requestAnswers.containsKey(answer.getId())){
             AnswerDTO requestAnswer = requestAnswers.get(answer.getId());
 
-            if(!requestAnswer.getAnswer().equals(answer.getAnswer())){
-              answer.setAnswer(requestAnswer.getAnswer());
-            }
-            if(!requestAnswer.getIsCorrect().equals(answer.getIsCorrect())){
-              answer.setIsCorrect(requestAnswer.getIsCorrect());
-            }
+            answer.setAnswer(requestAnswer.getAnswer());
+            answer.setIsCorrect(requestAnswer.getIsCorrect());
+
             answersToSet.add(answer);
           }
         }

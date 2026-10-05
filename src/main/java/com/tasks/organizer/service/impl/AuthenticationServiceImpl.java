@@ -12,7 +12,9 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,15 +36,25 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
-    public JwtAuthenticationResponse signup(SignUpRequest request) {
+    public ResponseEntity<JwtAuthenticationResponse> signup(SignUpRequest request) {
+        Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
+        if(existingUser.isPresent()){
+            return ResponseEntity.badRequest().build();
+        }
+
         var newUser = User.builder().firstName(request.getFirstName()).lastName(request.getLastName())
-                .email(request.getEmail()).password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.STUDENT).build();
+            .email(request.getEmail()).password(passwordEncoder.encode(request.getPassword()))
+            .role(Role.STUDENT).build();
 
         User user = userRepository.save(newUser);
         
         var jwt = jwtService.generateToken(generateClaims(user), user);
-        return JwtAuthenticationResponse.builder().token(jwt).build();
+        return ResponseEntity.ok(
+            JwtAuthenticationResponse.builder()
+                .token(jwt)
+                .build()
+        );
+
     }
 
     @Override

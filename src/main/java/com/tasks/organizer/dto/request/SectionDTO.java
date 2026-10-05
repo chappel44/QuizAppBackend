@@ -13,4 +13,6 @@ public class SectionDTO {
 
   @Size (max = 255)
   private String description;
+
+  private boolean isActive = true;
 }
