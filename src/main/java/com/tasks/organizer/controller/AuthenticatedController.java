@@ -30,7 +30,7 @@ public class AuthenticatedController {
   final SectionMapperOverview sectionMapperOverview;
 
   @GetMapping("/section-overview")
-  public ResponseEntity getMethodName() {
+  public ResponseEntity getSectionsWithTopics() {
     List<Section> sections = sectionRepository.findAll();
 
     List<SectionOverviewResponse> overview = sectionMapperOverview.toResponse(sections);
