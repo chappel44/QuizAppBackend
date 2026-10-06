@@ -260,6 +260,87 @@ Returns the sections and the topics that belong to each one. Used by the fronten
 }
 ```
 
+### Get a topic
+
+`GET /api/authenticated/topics`
+
+Returns a topic along with its questions and answers. Any authenticated user can call it, but admins also see which answers are correct.
+
+**Query params**
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `topicId` | UUID | Yes | Topic to fetch |
+
+**Rules**
+
+1. `topicId` must belong to an existing topic, otherwise the route returns `404`.
+
+**Visibility by role**
+
+| Role | `answers[].isCorrect` |
+|---|---|
+| Admin | Included |
+| Student | Not present in the response |
+
+**Response**
+
+```jsonc
+{
+  "status": 200,
+  "message": "Topic Retrieved",
+  "data": {
+    "id": "uuid",
+    "createdAt": "2026-10-05T12:00:00Z",
+    "name": "string",
+    "description": "string",
+    "topicType": "TEST", // TEST | QUIZ | REVIEW | RANDOM_QUESTIONS
+    "dueDate": "2026-12-03T18:30:00",
+    "isActive": true,
+    "questions": [
+      {
+        "id": "uuid",
+        "points": 1,
+        "question": "string",
+        "imageUrl": "string",
+        "answers": [
+          {
+            "id": "uuid",
+            "createdAt": "2026-10-05T12:00:00Z",
+            "answer": "string",
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+For admins, each answer also includes `isCorrect`:
+
+```jsonc
+{
+  "id": "uuid",
+  "createdAt": "2026-10-05T12:00:00Z",
+  "answer": "string",
+  "isCorrect": true
+}
+```
+
+**Status codes:** `200`, `404`
+
+A `404` returns Spring's standard error body, not the `ApiResponse` wrapper:
+
+```jsonc
+{
+  "timestamp": "2026-10-06T12:00:00.000+00:00",
+  "status": 404,
+  "error": "Not Found",
+  "message": "Topic not found: <topicId>",
+  "path": "/api/authenticated/topics"
+}
+```
+
 ---
 
 ## Student: Attempts

@@ -1,23 +1,14 @@
 package com.tasks.organizer.dto.response;
 
 import java.util.List;
-import java.util.UUID;
 
-import lombok.Builder;
+import com.tasks.organizer.dto.response.base.BaseQuestion;
+
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
-@Getter @Setter @Builder 
-public class QuestionResponse {
-  private UUID id;
-
-  private int points;
-
-  private String question;
-
-  //private String answer;
-
-  private String imageUrl;
-
+@Getter @Setter @SuperBuilder
+public class QuestionResponse extends BaseQuestion{
   private List<AnswerResponse> answers;
 }

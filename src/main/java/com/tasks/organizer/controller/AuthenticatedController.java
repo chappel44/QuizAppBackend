@@ -2,6 +2,7 @@ package com.tasks.organizer.controller;
 
 import com.tasks.organizer.repository.SectionRepository;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tasks.organizer.controller.AdminController.ApiResponse;
@@ -10,10 +11,12 @@ import com.tasks.organizer.entities.Section;
 import com.tasks.organizer.mappers.SectionMapperOverview;
 import com.tasks.organizer.mappers.TopicMapper;
 import com.tasks.organizer.repository.TopicRepository;
+import com.tasks.organizer.service.TopicService;
 
 import lombok.AllArgsConstructor;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +31,7 @@ public class AuthenticatedController {
   final TopicRepository topicRepository;
   final TopicMapper topicMapper;
   final SectionMapperOverview sectionMapperOverview;
+  final TopicService topicService;
 
   @GetMapping("/section-overview")
   public ResponseEntity getSectionsWithTopics() {
@@ -42,5 +46,10 @@ public class AuthenticatedController {
       "Section overview",
       overview
     ));
+  }
+
+  @GetMapping ("/topics")
+  public ResponseEntity getTopicWithQuestionsAndAnswers(@RequestParam UUID topicId) {
+    return topicService.getTopicWithQuestionsAndAnswers(topicId);
   }
 }
