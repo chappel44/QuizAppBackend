@@ -117,6 +117,9 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
+					<compilerArgs>
+						<arg>-Amapstruct.verbose=true</arg>
+					</compilerArgs>
 					<excludes>
 						<exclude>
 							<groupId>org.projectlombok</groupId>

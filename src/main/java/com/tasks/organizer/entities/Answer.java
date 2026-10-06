@@ -15,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import lombok.Builder.Default;
 import lombok.experimental.SuperBuilder;
 
 @Entity 
@@ -36,4 +37,8 @@ public class Answer extends BaseEntity{
 
   @Column (nullable = false)
   private Boolean isCorrect;
+
+  @Default 
+  @Column (nullable = false)
+  private boolean isActive = true;
 }

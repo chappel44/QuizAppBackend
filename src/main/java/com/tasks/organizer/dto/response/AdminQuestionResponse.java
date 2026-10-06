@@ -11,4 +11,5 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder @Getter @Setter 
 public class AdminQuestionResponse extends BaseQuestion{
   List<AnswerResponseWithCorrect> answers;
+  boolean isActive;
 }

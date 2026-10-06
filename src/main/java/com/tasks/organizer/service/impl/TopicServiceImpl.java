@@ -17,8 +17,6 @@ import com.tasks.organizer.dto.request.AnswerDTO;
 import com.tasks.organizer.dto.request.CreateTopicDTO;
 import com.tasks.organizer.dto.request.QuestionDTO;
 import com.tasks.organizer.dto.request.TopicDTO;
-import com.tasks.organizer.dto.response.AdminTopicResponse;
-import com.tasks.organizer.dto.response.TopicResponse;
 import com.tasks.organizer.entities.Answer;
 import com.tasks.organizer.entities.Question;
 import com.tasks.organizer.entities.Role;
