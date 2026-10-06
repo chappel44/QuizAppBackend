@@ -8,17 +8,24 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.core.Authentication;
 
 import com.tasks.organizer.dto.request.AnswerDTO;
 import com.tasks.organizer.dto.request.CreateTopicDTO;
 import com.tasks.organizer.dto.request.QuestionDTO;
 import com.tasks.organizer.dto.request.TopicDTO;
+import com.tasks.organizer.dto.response.AdminTopicResponse;
+import com.tasks.organizer.dto.response.TopicResponse;
 import com.tasks.organizer.entities.Answer;
 import com.tasks.organizer.entities.Question;
+import com.tasks.organizer.entities.Role;
 import com.tasks.organizer.entities.Section;
 import com.tasks.organizer.entities.Topic;
+import com.tasks.organizer.entities.User;
+import com.tasks.organizer.mappers.TopicMapper;
 import com.tasks.organizer.repository.AnswerRepository;
 import com.tasks.organizer.repository.QuestionRepository;
 import com.tasks.organizer.repository.SectionRepository;
@@ -35,6 +42,7 @@ public class TopicServiceImpl implements TopicService {
   final SectionRepository sectionRepository;
   final QuestionRepository questionRepository;
   final AnswerRepository answerRepository;
+  final TopicMapper topicMapper;
 
   public record ApiResponse<T>(
     int status,
@@ -244,6 +252,33 @@ public class TopicServiceImpl implements TopicService {
       200,
       "Successfully updated topic",
       null 
+    ));
+  }
+
+  public ResponseEntity getTopicWithQuestionsAndAnswers(UUID topicId){
+    Topic topic = topicRepository.findById(topicId)
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found" + topicId));
+    
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    User user = (User) authentication.getPrincipal();
+
+    Object formattedTopic;
+    if(user.getRole().equals(Role.ADMIN)){
+      //Returns an AdminTopicResponse with all fields
+      formattedTopic = topicMapper.toAdminTopicResponse(topic);
+    }
+    else{
+
+      //Returns a TopicResponse
+      formattedTopic = topicMapper.toResponse(topic);
+    }
+
+    return ResponseEntity
+    .status(HttpStatus.OK)
+        .body(new ApiResponse<>(
+        200,
+        "Topic Retrieved",
+        formattedTopic
     ));
   }
 }

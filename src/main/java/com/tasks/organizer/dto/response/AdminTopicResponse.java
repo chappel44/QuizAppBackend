@@ -9,7 +9,6 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 @SuperBuilder @Getter @Setter 
-public class TopicResponse extends BaseTopic {
-  private List<QuestionResponse> questions;
+public class AdminTopicResponse extends BaseTopic{
+  List<AdminQuestionResponse> questions;
 }
-

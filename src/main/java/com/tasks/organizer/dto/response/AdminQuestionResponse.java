@@ -8,7 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-@Getter @Setter @SuperBuilder
-public class QuestionResponse extends BaseQuestion{
-  private List<AnswerResponse> answers;
+@SuperBuilder @Getter @Setter 
+public class AdminQuestionResponse extends BaseQuestion{
+  List<AnswerResponseWithCorrect> answers;
 }

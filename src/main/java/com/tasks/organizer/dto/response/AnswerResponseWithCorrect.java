@@ -1,16 +1,11 @@
 package com.tasks.organizer.dto.response;
 
-import java.time.Instant;
-import java.util.UUID;
-
-import lombok.Builder;
 import lombok.Getter;
-import lombok.ToString;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
-@Getter @ToString @Builder 
-  public class AnswerResponseWithCorrect {
-  private UUID id;
-  private Instant createdAt;
-  private String answer;
-  private Boolean isCorrect;
+@SuperBuilder 
+@Getter @Setter 
+public class AnswerResponseWithCorrect extends AnswerResponse{
+  private boolean isCorrect;
 }

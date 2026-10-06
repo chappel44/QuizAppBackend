@@ -8,6 +8,6 @@ import com.tasks.organizer.dto.request.CreateTopicDTO;
 
 public interface TopicService {
   String generateTopic(CreateTopicDTO entity, UUID sectionId);
-
   ResponseEntity updateTopic(UUID topicId, CreateTopicDTO request);
+  ResponseEntity getTopicWithQuestionsAndAnswers(UUID topicId);
 }
