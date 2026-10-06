@@ -260,6 +260,8 @@ Returns the sections and the topics that belong to each one. Used by the fronten
 }
 ```
 
+---
+
 ### Get a topic
 
 `GET /api/authenticated/topics`

@@ -24,5 +24,5 @@ public class BaseTopic {
   
   private LocalDateTime dueDate;
 
-  private Boolean isActive;
+  private boolean isActive;
 }

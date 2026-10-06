@@ -15,4 +15,5 @@ public class AnswerResponse {
   private UUID id;
   private Instant createdAt;
   private String answer;
+  private boolean isActive;
 }

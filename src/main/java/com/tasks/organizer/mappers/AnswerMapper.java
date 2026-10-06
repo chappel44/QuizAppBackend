@@ -13,14 +13,12 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface AnswerMapper {
     @Named ("student")
-    @IterableMapping (qualifiedByName = "student")
     AnswerResponse toResponse(Answer answer);
     @Named ("student")
     @IterableMapping (qualifiedByName = "student")
     List<AnswerResponse> toResponseList(List<Answer> answers);
 
     @Named ("admin")
-    @IterableMapping(qualifiedByName = "admin")
     AnswerResponseWithCorrect toAdminAnswerRepsonse(Answer answer);
     @Named ("admin")
     @IterableMapping(qualifiedByName = "admin")
