@@ -19,5 +19,8 @@ public class AnswerDTO {
   @NotNull 
   private Boolean isCorrect;
 
+  @NotNull
+  boolean isActive;
+
   private UUID id;
 }

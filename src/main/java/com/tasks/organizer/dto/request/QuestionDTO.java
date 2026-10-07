@@ -23,7 +23,7 @@ public class QuestionDTO {
   @Size (min = 2, max = 255)
   private String question;
 
-  @NotNull
+  // @NotNull
   @Size (min=2, max = 255)
   private String answer;
 
