@@ -182,45 +182,43 @@ public class TopicServiceImpl implements TopicService {
         Map<UUID, AnswerDTO> requestAnswers = new HashMap<>();
 
         //Find answers associated with the question
-        if(requestQuestion.getAnswer() != null) {
-          Boolean trueFound = false;
-          Integer count = 0;
-          for(AnswerDTO answer : requestQuestion.getAnswers()) {
-            if(answer.getIsCorrect()){ //Ensure no duplicate correct answers are inserted
-              if (trueFound) {
-                return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponse<>(
-                  400,
-                  "Duplicate correct answer found on question ",
-                  answer
-                ));
-              }
-              
-              trueFound=true;
-            }
-
-            if(answer.getId() != null){
-              requestAnswers.put(answer.getId(), answer);
-            }
-            else{
-              Answer newAnswer = Answer.builder()
-              .question(prevQuestion)
-              .answer(answer.getAnswer())
-              .isCorrect(answer.getIsCorrect()).build();
-
-              answersToAdd.add(newAnswer);
-            }
-            count++;
-            if(count > answerLimit){
+        Boolean trueFound = false;
+        Integer count = 0;
+        for(AnswerDTO answer : requestQuestion.getAnswers()) {
+          if(answer.getIsCorrect()){ //Ensure no duplicate correct answers are inserted
+            if (trueFound) {
               return ResponseEntity
               .status(HttpStatus.BAD_REQUEST)
               .body(new ApiResponse<>(
-                  400,
-                  "Max answer count of " + answerLimit + " exceeded.",
-                  prevQuestion.getId()
+                400,
+                "Duplicate correct answer found on question ",
+                answer
               ));
             }
+            
+            trueFound=true;
+          }
+          
+          if(answer.getId() != null){
+            requestAnswers.put(answer.getId(), answer);
+          }
+          else{
+            Answer newAnswer = Answer.builder()
+            .question(prevQuestion)
+            .answer(answer.getAnswer())
+            .isCorrect(answer.getIsCorrect()).build();
+            System.out.println("Adding answers" + newAnswer);
+            answersToAdd.add(newAnswer);
+          }
+          count++;
+          if(count > answerLimit){
+            return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(new ApiResponse<>(
+                400,
+                "Max answer count of " + answerLimit + " exceeded.",
+                prevQuestion.getId()
+            ));
           }
         }
 
@@ -266,7 +264,6 @@ public class TopicServiceImpl implements TopicService {
       formattedTopic = topicMapper.toAdminTopicResponse(topic);
     }
     else{
-
       //Returns a TopicResponse
       formattedTopic = topicMapper.toResponse(topic);
     }

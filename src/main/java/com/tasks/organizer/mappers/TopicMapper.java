@@ -28,5 +28,6 @@ public interface TopicMapper {
     TopicOverviewResponse toResponseDescriptive(Topic topic);
     
     @Named ("admin")
+    @Mapping (target = "sectionId", source = "section.id")
     AdminTopicResponse toAdminTopicResponse(Topic topic);
 }
