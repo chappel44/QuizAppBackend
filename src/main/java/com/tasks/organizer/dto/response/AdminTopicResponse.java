@@ -15,4 +15,5 @@ import lombok.experimental.SuperBuilder;
 public class AdminTopicResponse extends BaseTopic{
   UUID sectionId;
   List<AdminQuestionResponse> questions;
+  Integer questionPoolSize;
 }
