@@ -2,6 +2,7 @@ package com.tasks.organizer.entities;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import com.tasks.organizer.entities.base.NamedEntity;
 
@@ -37,6 +38,9 @@ public class Topic extends NamedEntity {
   @ManyToOne
   @JoinColumn (name = "section_id")
   private Section section;
+
+  @Column(name = "section_id", insertable = false, updatable = false)
+  private UUID sectionId;
 
   @OneToMany(mappedBy = "topic", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Question> questions;
