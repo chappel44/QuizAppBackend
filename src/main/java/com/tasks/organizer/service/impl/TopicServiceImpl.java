@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -133,8 +134,7 @@ public class TopicServiceImpl implements TopicService {
     prevTopic.setTopicType(requestTopic.getTopicType());
 
     //Update which section a topic is associated with
-    if(!prevTopic.getSection().getId().equals(requestTopic.getSectionId())){
-
+    if(!prevTopic.getSectionId().equals(requestTopic.getSectionId())){
       Section updatedSection = sectionRepository.findById(requestTopic.getSectionId())
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Section not found" + topicId));
       
@@ -150,8 +150,7 @@ public class TopicServiceImpl implements TopicService {
     List<Question> questionsToRemove  = new ArrayList<>();
 
     //Find active questions in DB
-    List<Question> activeQuestions = questionRepository.findAllByTopic(prevTopic)
-      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found" + prevTopic));
+    List<Question> activeQuestions = questionRepository.findByTopicIdWithAnswers(prevTopic.getId());
 
     //Find questions associated with request
     if(request.getQuestions() != null){
@@ -165,8 +164,9 @@ public class TopicServiceImpl implements TopicService {
         }
       }
     }
-
+    
     List<Answer> answersToAdd = new ArrayList<>();
+
     for(Question prevQuestion : activeQuestions){
       if(!requestQuestions.containsKey(prevQuestion.getId())) { //Id in request questions not found, add to deleted
         questionsToRemove.add(prevQuestion);
@@ -178,7 +178,8 @@ public class TopicServiceImpl implements TopicService {
         prevQuestion.setAnswer(requestQuestion.getAnswer());
         prevQuestion.setPoints(requestQuestion.getPoints());
         prevQuestion.setImageUrl(requestQuestion.getImageUrl());
-
+        prevQuestion.setIsActive(requestQuestion.isActive());
+        
         Map<UUID, AnswerDTO> requestAnswers = new HashMap<>();
 
         //Find answers associated with the question
@@ -207,9 +208,9 @@ public class TopicServiceImpl implements TopicService {
             .question(prevQuestion)
             .answer(answer.getAnswer())
             .isCorrect(answer.getIsCorrect()).build();
-            System.out.println("Adding answers" + newAnswer);
             answersToAdd.add(newAnswer);
           }
+
           count++;
           if(count > answerLimit){
             return ResponseEntity

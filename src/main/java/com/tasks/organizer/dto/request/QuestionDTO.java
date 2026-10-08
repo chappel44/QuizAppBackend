@@ -33,6 +33,8 @@ public class QuestionDTO {
 
   private String imageUrl;
 
+  private boolean isActive;
+
   @Setter 
   private UUID correctAnswerId;
 }

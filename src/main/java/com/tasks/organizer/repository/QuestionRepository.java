@@ -28,4 +28,11 @@ public interface QuestionRepository extends JpaRepository<Question, UUID>{
   WHERE q.id IN :questionIds
   """)
   List<Question> findByQuestionIdsWithAnswers(@Param("questionIds") List<UUID> questionIds);
+
+  @Query("""
+  SELECT DISTINCT q FROM Question q
+  LEFT JOIN FETCH q.answers
+  WHERE q IN :questions
+  """)
+  List<Question> findByQuestionWithAnswers(@Param("questions") List<Question> questionIds);
 }
