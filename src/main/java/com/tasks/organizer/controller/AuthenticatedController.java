@@ -17,6 +17,7 @@ import lombok.AllArgsConstructor;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collector;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,8 +36,8 @@ public class AuthenticatedController {
 
   @GetMapping("/section-overview")
   public ResponseEntity getSectionsWithTopics() {
-    List<Section> sections = sectionRepository.findAll();
-
+    List<Section> sections = sectionRepository.findAllWithTopics();
+    
     List<SectionOverviewResponse> overview = sectionMapperOverview.toResponse(sections);
 
     return ResponseEntity
