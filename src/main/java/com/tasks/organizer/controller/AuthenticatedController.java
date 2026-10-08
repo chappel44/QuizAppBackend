@@ -7,7 +7,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tasks.organizer.controller.AdminController.ApiResponse;
 import com.tasks.organizer.dto.response.SectionOverviewResponse;
+import com.tasks.organizer.entities.Role;
 import com.tasks.organizer.entities.Section;
+import com.tasks.organizer.entities.User;
 import com.tasks.organizer.mappers.SectionMapperOverview;
 import com.tasks.organizer.mappers.TopicMapper;
 import com.tasks.organizer.repository.TopicRepository;
@@ -15,12 +17,15 @@ import com.tasks.organizer.service.TopicService;
 
 import lombok.AllArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collector;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 
 
@@ -36,7 +41,17 @@ public class AuthenticatedController {
 
   @GetMapping("/section-overview")
   public ResponseEntity getSectionsWithTopics() {
-    List<Section> sections = sectionRepository.findAllWithTopics();
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    User user = (User) authentication.getPrincipal();
+
+    List<Section> sections = new ArrayList<>();
+
+    if(user.getRole().equals(Role.STUDENT)){
+      sections = sectionRepository.findAllWithTopicsStudent();
+    }
+    else if (user.getRole().equals(Role.ADMIN)) {
+      sections = sectionRepository.findAllWithTopicsAdmin();
+    }
     
     List<SectionOverviewResponse> overview = sectionMapperOverview.toResponse(sections);
 

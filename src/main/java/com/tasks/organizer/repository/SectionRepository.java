@@ -13,7 +13,14 @@ public interface SectionRepository extends JpaRepository<Section, UUID>{
 
   @Query("""
     SELECT DISTINCT s FROM Section s
-    LEFT JOIN FETCH s.topics
+    LEFT JOIN FETCH s.topics t
+    ON t.isActive = true
     """)
-  List<Section> findAllWithTopics();
+  List<Section> findAllWithTopicsStudent();
+
+  @Query("""
+    SELECT DISTINCT s FROM Section s
+    LEFT JOIN FETCH s.topics t
+    """)
+  List<Section> findAllWithTopicsAdmin();
 }
