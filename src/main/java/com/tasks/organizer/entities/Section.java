@@ -17,7 +17,7 @@ import lombok.experimental.SuperBuilder;
 
 @Table (name = "section")
 @Entity
-@SuperBuilder
+@SuperBuilder (toBuilder = true)
 @NoArgsConstructor 
 @Getter @Setter
 public class Section extends NamedEntity {
@@ -27,4 +27,9 @@ public class Section extends NamedEntity {
 
   @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Topic> topics;
+
+  // The Copy Constructor
+  public Section(Section other) {
+    this(other.toBuilder());
+  }
 }

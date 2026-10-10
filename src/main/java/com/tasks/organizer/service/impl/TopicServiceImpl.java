@@ -119,7 +119,7 @@ public class TopicServiceImpl implements TopicService {
       //Save questions
       questionRepository.saveAll(questionsToInsert);
 
-      return "Submitted successfully";
+      return String.valueOf(insertedTopic.getId());
   }
 
   @Transactional 

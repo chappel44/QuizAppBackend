@@ -11,16 +11,10 @@ import com.tasks.organizer.entities.Section;
 public interface SectionRepository extends JpaRepository<Section, UUID>{
   Optional<Section> findById(UUID id);
 
-  @Query("""
-    SELECT DISTINCT s FROM Section s
-    LEFT JOIN FETCH s.topics t
-    ON t.isActive = true
-    """)
-  List<Section> findAllWithTopicsStudent();
 
   @Query("""
     SELECT DISTINCT s FROM Section s
     LEFT JOIN FETCH s.topics t
     """)
-  List<Section> findAllWithTopicsAdmin();
+  List<Section> findAllWithTopics();
 }
