@@ -2,6 +2,9 @@ package com.tasks.organizer.entities;
 
 import java.util.UUID;
 
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import com.tasks.organizer.entities.base.BaseEntity;
 
 import jakarta.persistence.Column;
@@ -19,10 +22,12 @@ import lombok.experimental.SuperBuilder;
 @Getter @Setter @SuperBuilder  @NoArgsConstructor 
 public class AttemptQuestion extends BaseEntity {
   @ManyToOne (fetch = FetchType.LAZY)
+  @OnDelete(action = OnDeleteAction.CASCADE)
   @JoinColumn(name = "attempt_id", updatable = false)
   private Attempt attempt;
 
   @ManyToOne (fetch = FetchType.LAZY)
+  @OnDelete(action = OnDeleteAction.CASCADE)
   @JoinColumn(name = "question_id", updatable = false)
   private Question question;
 
