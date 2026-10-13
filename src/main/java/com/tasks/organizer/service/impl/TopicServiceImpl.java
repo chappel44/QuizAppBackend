@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -24,6 +24,7 @@ import com.tasks.organizer.entities.Role;
 import com.tasks.organizer.entities.Section;
 import com.tasks.organizer.entities.Topic;
 import com.tasks.organizer.entities.User;
+import com.tasks.organizer.entities.Topic.TopicType;
 import com.tasks.organizer.mappers.TopicMapper;
 import com.tasks.organizer.repository.AnswerRepository;
 import com.tasks.organizer.repository.QuestionRepository;
@@ -124,33 +125,44 @@ public class TopicServiceImpl implements TopicService {
 
   @Transactional 
   public ResponseEntity updateTopic(UUID topicId, CreateTopicDTO request) {
-    Topic prevTopic = topicRepository.findById(topicId)
+    Topic activeTopic = topicRepository.findById(topicId)
       .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found" + topicId));
     
     TopicDTO requestTopic = request.getTopic();
-    
-    prevTopic.setName(requestTopic.getName());
-    prevTopic.setDescription(requestTopic.getDescription());
-    prevTopic.setTopicType(requestTopic.getTopicType());
 
+    //Topic changed if a the topic type, or section it belongs to changes or if the question pool size changes.
+    boolean topicChange =
+      !requestTopic.getTopicType().equals(activeTopic.getTopicType()) ||
+      !Objects.equals(requestTopic.getSectionId(), activeTopic.getSectionId()) ||
+      (requestTopic.getQuestionPoolSize() != activeTopic.getQuestionPoolSize()
+        && requestTopic.getTopicType() == TopicType.RANDOM_QUESTIONS);    
+    
+    activeTopic.setName(requestTopic.getName());
+    activeTopic.setDescription(requestTopic.getDescription());
+    activeTopic.setTopicType(requestTopic.getTopicType());
+    
     //Update which section a topic is associated with
-    if(!prevTopic.getSectionId().equals(requestTopic.getSectionId())){
+    if(!activeTopic.getSectionId().equals(requestTopic.getSectionId())){
       Section updatedSection = sectionRepository.findById(requestTopic.getSectionId())
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Section not found" + topicId));
       
-      prevTopic.setSection(updatedSection);
+      activeTopic.setSection(updatedSection);
     }
 
-    prevTopic.setIsActive(requestTopic.getIsActive());
-    prevTopic.setDueDate(requestTopic.getDueDate());
-    prevTopic.setQuestionPoolSize(requestTopic.getQuestionPoolSize());
+    activeTopic.setIsActive(requestTopic.getIsActive());
+    activeTopic.setDueDate(requestTopic.getDueDate());
+    activeTopic.setQuestionPoolSize(requestTopic.getQuestionPoolSize());
 
     Map<UUID, QuestionDTO> requestQuestions = new HashMap<>();
     List<Question> questionsToAdd = new ArrayList<>();
     List<Question> questionsToRemove  = new ArrayList<>();
 
     //Find active questions in DB
-    List<Question> activeQuestions = questionRepository.findByTopicIdWithAnswers(prevTopic.getId());
+    List<Question> activeQuestions = questionRepository.findByTopicIdWithAnswers(activeTopic.getId());
+
+    boolean questionChange = 
+    activeQuestions.size() != request.getQuestions().size();
+    boolean answerChange = false;
 
     //Find questions associated with request
     if(request.getQuestions() != null){
@@ -159,7 +171,8 @@ public class TopicServiceImpl implements TopicService {
           requestQuestions.put(question.getId(), question);
         }
         else{ //No id present, we must add the question
-          Question newQuestion = createQuestion(question, prevTopic);
+          questionChange = true;
+          Question newQuestion = createQuestion(question, activeTopic);
           questionsToAdd.add(newQuestion);
         }
       }
@@ -167,47 +180,57 @@ public class TopicServiceImpl implements TopicService {
     
     List<Answer> answersToAdd = new ArrayList<>();
 
-    for(Question prevQuestion : activeQuestions){
-      if(!requestQuestions.containsKey(prevQuestion.getId())) { //Id in request questions not found, add to deleted
-        questionsToRemove.add(prevQuestion);
+    for(Question activeQuestion : activeQuestions){
+      if(!requestQuestions.containsKey(activeQuestion.getId())) { //Id in request questions not found, add to deleted
+        questionChange = true;
+        questionsToRemove.add(activeQuestion);
       }
       else { //Check for question modifications
-        QuestionDTO requestQuestion = requestQuestions.get(prevQuestion.getId());
+        QuestionDTO requestQuestion = requestQuestions.get(activeQuestion.getId());
 
-        prevQuestion.setQuestion(requestQuestion.getQuestion());
-        prevQuestion.setAnswer(requestQuestion.getAnswer());
-        prevQuestion.setPoints(requestQuestion.getPoints());
-        prevQuestion.setImageUrl(requestQuestion.getImageUrl());
-        prevQuestion.setIsActive(requestQuestion.isActive());
+        //Bump up the version if points differ of the question or active status differ
+        questionChange |=
+          activeQuestion.getPoints() != requestQuestion.getPoints() || 
+          !Objects.equals(activeQuestion.getIsActive(), requestQuestion.isActive()) ||
+          activeQuestion.getAnswers().size() != requestQuestion.getAnswers().size();
         
+        activeQuestion.setQuestion(requestQuestion.getQuestion());
+        activeQuestion.setAnswer(requestQuestion.getAnswer());
+        activeQuestion.setPoints(requestQuestion.getPoints());
+        activeQuestion.setImageUrl(requestQuestion.getImageUrl());
+        activeQuestion.setIsActive(requestQuestion.isActive());
+
         Map<UUID, AnswerDTO> requestAnswers = new HashMap<>();
 
         //Find answers associated with the question
         Boolean trueFound = false;
         Integer count = 0;
-        for(AnswerDTO answer : requestQuestion.getAnswers()) {
-          if(answer.getIsCorrect()){ //Ensure no duplicate correct answers are inserted
+
+        for(AnswerDTO requestAnswer : requestQuestion.getAnswers()) {
+          if(requestAnswer.getIsCorrect()){ //Ensure no duplicate correct answers are inserted
             if (trueFound) {
               return ResponseEntity
               .status(HttpStatus.BAD_REQUEST)
               .body(new ApiResponse<>(
                 400,
                 "Duplicate correct answer found on question ",
-                answer
+                requestAnswer
               ));
             }
             
             trueFound=true;
           }
           
-          if(answer.getId() != null){
-            requestAnswers.put(answer.getId(), answer);
+          if(requestAnswer.getId() != null){
+            requestAnswers.put(requestAnswer.getId(), requestAnswer);
           }
           else{
+            answerChange = true;
+
             Answer newAnswer = Answer.builder()
-            .question(prevQuestion)
-            .answer(answer.getAnswer())
-            .isCorrect(answer.getIsCorrect()).build();
+            .question(activeQuestion)
+            .answer(requestAnswer.getAnswer())
+            .isCorrect(requestAnswer.getIsCorrect()).build();
             answersToAdd.add(newAnswer);
           }
 
@@ -218,35 +241,46 @@ public class TopicServiceImpl implements TopicService {
             .body(new ApiResponse<>(
                 400,
                 "Max answer count of " + answerLimit + " exceeded.",
-                prevQuestion.getId()
+                activeQuestion.getId()
             ));
           }
         }
 
         List<Answer> answersToSet = new ArrayList<>();
-        for(Answer answer: prevQuestion.getAnswers()){
-          if(requestAnswers.containsKey(answer.getId())){
-            AnswerDTO requestAnswer = requestAnswers.get(answer.getId());
+        for(Answer activeAnswer: activeQuestion.getAnswers()){
+          if(requestAnswers.containsKey(activeAnswer.getId())){
+            AnswerDTO requestAnswer = requestAnswers.get(activeAnswer.getId());
 
-            answer.setAnswer(requestAnswer.getAnswer());
-            answer.setIsCorrect(requestAnswer.getIsCorrect());
+            if (!Objects.equals(activeAnswer.getIsCorrect(), requestAnswer.getIsCorrect())){
+              answerChange = true;
+            }
 
-            answersToSet.add(answer);
+            activeAnswer.setAnswer(requestAnswer.getAnswer());
+            activeAnswer.setIsCorrect(requestAnswer.getIsCorrect());
+
+            answersToSet.add(activeAnswer);
           }
         }
-        prevQuestion.getAnswers().clear();
-        prevQuestion.getAnswers().addAll(answersToSet);
+        activeQuestion.getAnswers().clear();
+        activeQuestion.getAnswers().addAll(answersToSet);
       }
+    }
+
+    if(topicChange || questionChange || answerChange){
+      activeTopic.setVersion(activeTopic.getVersion() + 1);
     }
 
     questionRepository.deleteAll(questionsToRemove);
     answerRepository.saveAll(answersToAdd);
     questionRepository.saveAll(questionsToAdd);
+
+    System.out.println("Topic Changed?" + topicChange);
+    System.out.println("Question Changed?" + questionChange);
       
     return ResponseEntity
-    .status(HttpStatus.OK)
+    .status(HttpStatus.NO_CONTENT)
     .body(new ApiResponse<>(
-      200,
+      204,
       "Successfully updated topic",
       null 
     ));
@@ -256,10 +290,14 @@ public class TopicServiceImpl implements TopicService {
     Topic topic = topicRepository.findById(topicId)
       .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found" + topicId));
     
+    List<Question> topicQuestions = questionRepository.findByTopicIdWithAnswers(topic.getId());
+    topic.setQuestions(topicQuestions);
+
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
     Object formattedTopic;
+
     if(user.getRole().equals(Role.ADMIN)){
       //Returns an AdminTopicResponse with all fields
       formattedTopic = topicMapper.toAdminTopicResponse(topic);

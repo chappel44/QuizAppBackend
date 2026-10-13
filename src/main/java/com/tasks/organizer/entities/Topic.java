@@ -16,6 +16,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -44,6 +45,13 @@ public class Topic extends NamedEntity {
 
   @OneToMany(mappedBy = "topic", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Question> questions;
+
+  @OneToMany (mappedBy = "topic", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<Attempt> attempts;
+  
+  @Default 
+  @Min (1)
+  private int version = 1;
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)

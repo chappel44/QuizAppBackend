@@ -2,6 +2,9 @@ package com.tasks.organizer.entities;
 
 import java.util.List;
 
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import com.tasks.organizer.entities.base.BaseEntity;
 
 import jakarta.persistence.CascadeType;
@@ -30,11 +33,13 @@ import lombok.experimental.SuperBuilder;
 @Getter @Setter @ToString 
 public class Attempt extends BaseEntity {
   @ManyToOne (fetch = FetchType.LAZY)
+  @OnDelete(action = OnDeleteAction.CASCADE)
   @JoinColumn(name = "topic_id", updatable = false, nullable = false)
   @Setter (AccessLevel.NONE)
   private Topic topic;
 
   @ManyToOne (fetch = FetchType.LAZY)
+  @OnDelete(action = OnDeleteAction.CASCADE)
   @JoinColumn(name = "user_id", updatable = false, nullable = false)
   @Setter (AccessLevel.NONE)
   private User user;

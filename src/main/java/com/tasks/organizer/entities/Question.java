@@ -35,6 +35,9 @@ public class Question extends BaseEntity {
   @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Answer> answers;
 
+  @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<AttemptQuestion> attemptQuestions;
+
   @Min(1) 
   @Column (nullable = false)
   @Default 
