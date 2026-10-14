@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RequiredArgsConstructor
 @RequestMapping ("/api/admin")
 public class AdminController {
-    public record ApiResponse<T>(
+    public record ApiResponse <T>(
         int status,
         String message,
         T data

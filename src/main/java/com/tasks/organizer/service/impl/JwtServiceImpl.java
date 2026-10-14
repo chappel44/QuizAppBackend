@@ -27,7 +27,6 @@ public class JwtServiceImpl implements JwtService {
     @Value("${token.expiration}")
     private int EXPIRATION_TOKEN;
 
-
     @Override
     public String extractUserName(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -58,9 +57,9 @@ public class JwtServiceImpl implements JwtService {
     private String generateTokenIdentifiers(Map<String, Object> extraClaims, UserDetails userDetails) {
         try{
             return Jwts.builder().setClaims(extraClaims).setSubject(userDetails.getUsername())
-                    .setIssuedAt(new Date(System.currentTimeMillis()))
-                    .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TOKEN))
-                    .signWith(getSigningKey(), SignatureAlgorithm.HS256).compact();
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TOKEN))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256).compact();
         }catch (Exception e){
             throw new JwtException("Error in generate token: [ " + e.getMessage() + " ]");
         }
@@ -76,7 +75,7 @@ public class JwtServiceImpl implements JwtService {
 
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token)
-                .getBody();
+            .getBody();
     }
 
     private Key getSigningKey() {

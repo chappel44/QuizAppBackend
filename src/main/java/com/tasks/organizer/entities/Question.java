@@ -47,8 +47,8 @@ public class Question extends BaseEntity {
   @Column (length = 255, nullable = false)
   private String question;
 
-  @Size (min=2, max = 255)
-  @Column (length = 255, nullable = false)
+  // @Size (min=2, max = 255)
+  // @Column (length = 255, nullable = false)
   private String answer;
 
   @Column (length = 2048, nullable = true)
