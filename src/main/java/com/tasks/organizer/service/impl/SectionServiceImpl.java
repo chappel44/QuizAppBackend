@@ -14,9 +14,10 @@ import com.tasks.organizer.repository.SectionRepository;
 import com.tasks.organizer.service.SectionService;
 
 import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 
-@AllArgsConstructor
-@Service 
+@Service
+@AllArgsConstructor  
 public class SectionServiceImpl implements SectionService {
   final SectionRepository sectionRepository;
 

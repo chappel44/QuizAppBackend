@@ -14,7 +14,7 @@
 	<name>tasks.organizer</name>
 	<description>daily activities organizer</description>
 	<properties>
-		<java.version>21</java.version>
+		<java.version>17</java.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
 	</properties>
 	<dependencies>

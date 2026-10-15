@@ -24,7 +24,7 @@ import lombok.experimental.SuperBuilder;
 @Table (name = "questions")
 @Entity 
 @Getter @Setter 
-@SuperBuilder
+@SuperBuilder 
 @NoArgsConstructor 
 public class Question extends BaseEntity {
   @ManyToOne(fetch = FetchType.LAZY, optional = false)

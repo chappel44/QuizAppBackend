@@ -38,10 +38,12 @@ import com.tasks.organizer.repository.TopicRepository;
 import com.tasks.organizer.service.StudentService;
 
 import org.springframework.transaction.annotation.Transactional;
+
 import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 
 @Service 
-@AllArgsConstructor 
+@AllArgsConstructor  
 public class StudentServiceImpl implements StudentService{
   final TopicRepository topicRepository;
   final AttemptRepository attemptRepository;
@@ -114,9 +116,10 @@ public class StudentServiceImpl implements StudentService{
       attemptQuestions.add(attemptQuestion);
     }
 
-    newAttempt.setAttemptQuestions(attemptQuestions);
+    // newAttempt.setAttemptQuestions(attemptQuestions);
 
     Attempt insertedAttempt = attemptRepository.save(newAttempt);
+    attemptQuestionRepository.saveAll(attemptQuestions);
 
     return ResponseEntity
     .status(HttpStatus.OK)
@@ -349,45 +352,7 @@ public class StudentServiceImpl implements StudentService{
     ));    
   }
 
-  /*
-  Query params: attemptId
-  Expected Response:
-  {
-    Shape returned
-    attempt: {
-      id,
-      total_points,
-      points_earned,
-      attempt_questions: [
-        {
-          id,
-          is_correct,
-          submitted_answer_id
-        }
-      ]
-    },
-    topics: {
-      id,
-      name,
-      description,
-      topic_type,
-      questions: [
-        {
-          id,
-          question,
-          points,
-          image_url,
-          answers: [
-            {
-              id,
-              answer
-            }
-          ]
-        }
-      ]
-    }
-  }
-  */
+  @Transactional (readOnly = true) //This is used to prevent calling setQuestion() and it override the topic questions
   public ResponseEntity getAttempt(UUID attemptId){
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
@@ -414,12 +379,8 @@ public class StudentServiceImpl implements StudentService{
     }
 
     Topic topic = attempt.getTopic();
-
-    List<UUID> attemptQuestionIds = new ArrayList<>();
-
-    for (AttemptQuestion aq : attempt.getAttemptQuestions()) {
-      attemptQuestionIds.add(aq.getQuestion().getId());
-    }
+    List question = questionRepository.findByTopicIdWithAnswers(topic.getId());
+    topic.setQuestions(question);
 
     TopicResponse formattedTopic = TopicResponse.builder().id(topic.getId())
     .createdAt(topic.getCreatedAt())
@@ -431,8 +392,6 @@ public class StudentServiceImpl implements StudentService{
     .build();
 
     AttemptResponse attemptResponse = attemptMapper.toResponse(attempt);
-    System.out.println(attemptResponse);
-    System.out.println(attempt);
 
     GetAttemptResponse getAttemptResponse = GetAttemptResponse.builder()
     .attempt(attemptResponse)
@@ -487,8 +446,10 @@ public class StudentServiceImpl implements StudentService{
       attemptResponses.add(attResponse);
     }
 
-    TopicResponse topicResponse = topicMapper.toResponse(topic);
-    topicResponse.setQuestions(null);
+    // TopicResponse topicResponse = topicMapper.toResponse(topic);
+    // topicResponse.setQuestions(null);
+
+    TopicResponse topicResponse = TopicResponse.builder().name(topic.getName()).id(topic.getId()).topicType(topic.getTopicType()).build();
 
     AttemptsWithTopicResponse attemptsWithTopicResponse = new AttemptsWithTopicResponse();
 

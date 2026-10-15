@@ -34,9 +34,10 @@ import com.tasks.organizer.service.TopicService;
 
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 
 @Service 
-@AllArgsConstructor 
+@AllArgsConstructor
 public class TopicServiceImpl implements TopicService {
   final TopicRepository topicRepository;
   final SectionRepository sectionRepository;
@@ -49,8 +50,8 @@ public class TopicServiceImpl implements TopicService {
     String message,
     T data
   ) {}
-
-  final Integer answerLimit = 5;
+  
+  private Integer answerLimit = 5;
 
   @Transactional
   private Question createQuestion(QuestionDTO question, Topic topic) {
