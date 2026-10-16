@@ -57,7 +57,7 @@ public class SecurityConfiguration {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("https://quiz.flightaccelerate.com/", "http://localhost:3000")); //Allowed origins only testing and deployment urls
+        config.setAllowedOrigins(List.of("https://quiz-app-frontend-brown.vercel.app/", "http://localhost:3000")); //Allowed origins only testing and deployment urls
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("Content-Type", "Authorization"));
         config.setAllowCredentials(true);
