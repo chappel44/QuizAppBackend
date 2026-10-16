@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tasks.organizer.dto.response.ApiResponse;
 import com.tasks.organizer.mappers.QuestionMapper;
 import com.tasks.organizer.mappers.ResultMapper;
 import com.tasks.organizer.repository.ResultRepository;
@@ -32,27 +33,27 @@ public class StudentController {
   final StudentService studentService;
 
   @PostMapping("/attempt")
-  public ResponseEntity createAttempt(@RequestParam(required = true) UUID topicId) {
+  public ResponseEntity<ApiResponse<Object>> createAttempt(@RequestParam(required = true) UUID topicId) {
     return studentService.createAttempt(topicId);
   }
 
   @PatchMapping("/attempt/record/question")
-  public ResponseEntity recordAttemptQuestion(@RequestParam(required = true) UUID answerId, @RequestParam (required = true) UUID attemptQuestionId) {
+  public ResponseEntity<ApiResponse<Object>> recordAttemptQuestion(@RequestParam(required = true) UUID answerId, @RequestParam (required = true) UUID attemptQuestionId) {
     return studentService.recordAttemptQuestion(answerId, attemptQuestionId);
   }
 
   @PatchMapping("/attempt/test/grade")
-  public ResponseEntity gradeAttempt(@RequestParam (required = true) UUID attemptId) {
+  public ResponseEntity<ApiResponse<Object>> gradeAttempt(@RequestParam (required = true) UUID attemptId) {
     return studentService.gradeAttempt(attemptId);
   }
 
   @GetMapping("/attempt")
-  public ResponseEntity getAttempt(@RequestParam (required = true) UUID attemptId) {
+  public ResponseEntity<ApiResponse<Object>> getAttempt(@RequestParam (required = true) UUID attemptId) {
     return studentService.getAttempt(attemptId);
   }
 
   @GetMapping("/attempts")
-  public ResponseEntity getAttemptsWithTopic(@RequestParam (required = true) UUID topicId) {
+  public ResponseEntity<ApiResponse<Object>> getAttemptsWithTopic(@RequestParam (required = true) UUID topicId) {
     return studentService.getTopicAndAttempts(topicId);
   }
 }

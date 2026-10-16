@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tasks.organizer.dto.request.CreateTopicDTO;
 import com.tasks.organizer.dto.request.SectionDTO;
+import com.tasks.organizer.dto.response.ApiResponse;
 import com.tasks.organizer.entities.Section;
 import com.tasks.organizer.repository.SectionRepository;
 import com.tasks.organizer.repository.TopicRepository;
@@ -28,12 +29,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RequiredArgsConstructor
 @RequestMapping ("/api/admin")
 public class AdminController {
-    public record ApiResponse <T>(
-        int status,
-        String message,
-        T data
-    ) {}
-
     final TopicRepository topicRepository;
     final SectionRepository sectionRepository;
     final SectionService sectionService;
@@ -46,7 +41,7 @@ public class AdminController {
     }
 
     @PatchMapping ("/topics")
-    public ResponseEntity updateTopic(@RequestParam UUID topicId, @Validated @RequestBody CreateTopicDTO request){
+    public ResponseEntity<ApiResponse<Object>> updateTopic(@RequestParam UUID topicId, @Validated @RequestBody CreateTopicDTO request){
         return topicService.updateTopic(topicId, request);
     }
   

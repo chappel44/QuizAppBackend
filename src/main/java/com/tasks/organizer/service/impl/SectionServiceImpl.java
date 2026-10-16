@@ -6,15 +6,14 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import com.tasks.organizer.dto.response.ApiResponse;
 
-import com.tasks.organizer.controller.AdminController.ApiResponse;
 import com.tasks.organizer.dto.request.SectionDTO;
 import com.tasks.organizer.entities.Section;
 import com.tasks.organizer.repository.SectionRepository;
 import com.tasks.organizer.service.SectionService;
 
 import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 
 @Service
 @AllArgsConstructor  
@@ -23,25 +22,13 @@ public class SectionServiceImpl implements SectionService {
 
   public ResponseEntity updateSection(UUID sectionId, SectionDTO request){
     if(sectionId == null){
-        return ResponseEntity
-        .status(HttpStatus.BAD_REQUEST)
-        .body(new ApiResponse<>(
-            400,
-            "Missing section id",
-            null 
-        ));
+        return ApiResponse.error(HttpStatus.BAD_REQUEST, "Missing section id");
     }
     
     Optional<Section> sectionOpt = sectionRepository.findById(sectionId);
 
     if(!sectionOpt.isPresent()){
-        return ResponseEntity
-        .status(HttpStatus.NOT_FOUND)
-        .body(new ApiResponse<>(
-            404,
-            "Section not found",
-            null 
-        ));
+        return ApiResponse.error(HttpStatus.NOT_FOUND, "Section not found");
     }
 
     Section section = sectionOpt.get();
@@ -50,13 +37,7 @@ public class SectionServiceImpl implements SectionService {
     section.setDescription(request.getDescription());
     section.setIsActive(request.isActive());
 
-    return ResponseEntity
-    .status(HttpStatus.OK)
-    .body(new ApiResponse<>(
-        200,
-        "Section updated successfully",
-        null 
-    ));
+    return ApiResponse.of(HttpStatus.NO_CONTENT, "Section updated successfully", null);
   }
 
   public Section addSection (SectionDTO request) {

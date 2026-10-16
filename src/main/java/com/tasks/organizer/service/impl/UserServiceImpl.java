@@ -4,7 +4,6 @@ import com.tasks.organizer.repository.UserRepository;
 import com.tasks.organizer.service.UserService;
 
 import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;

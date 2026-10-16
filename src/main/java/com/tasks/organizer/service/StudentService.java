@@ -4,10 +4,12 @@ import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 
+import com.tasks.organizer.dto.response.ApiResponse;
+
 public interface StudentService {
-  ResponseEntity createAttempt(UUID topicId);
-  ResponseEntity recordAttemptQuestion(UUID answerId, UUID attemptQuestionId);
-  ResponseEntity gradeAttempt(UUID attemptId);
-  ResponseEntity getAttempt(UUID attemptId);
-  ResponseEntity getTopicAndAttempts(UUID topicId);
+  ResponseEntity<ApiResponse<Object>> createAttempt(UUID topicId);
+  ResponseEntity<ApiResponse<Object>> recordAttemptQuestion(UUID answerId, UUID attemptQuestionId);
+  ResponseEntity<ApiResponse<Object>> gradeAttempt(UUID attemptId);
+  ResponseEntity<ApiResponse<Object>> getAttempt(UUID attemptId);
+  ResponseEntity<ApiResponse<Object>> getTopicAndAttempts(UUID topicId);
 }

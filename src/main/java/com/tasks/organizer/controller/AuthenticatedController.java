@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.tasks.organizer.controller.AdminController.ApiResponse;
+import com.tasks.organizer.dto.response.ApiResponse;
 import com.tasks.organizer.dto.response.SectionOverviewResponse;
 import com.tasks.organizer.entities.Role;
 import com.tasks.organizer.entities.Section;
@@ -18,12 +18,10 @@ import com.tasks.organizer.service.TopicService;
 
 import lombok.AllArgsConstructor;
 
-
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,7 +30,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 @RestController 
 @RequestMapping ("/api/authenticated")
-@AllArgsConstructor 
+@AllArgsConstructor
 public class AuthenticatedController {
   private final SectionRepository sectionRepository;
   final TopicRepository topicRepository;
@@ -41,7 +39,7 @@ public class AuthenticatedController {
   final TopicService topicService;
 
   @GetMapping("/section-overview")
-  public ResponseEntity getSectionsWithTopics() {
+  public ResponseEntity<ApiResponse<Object>> getSectionsWithTopics() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
@@ -50,7 +48,7 @@ public class AuthenticatedController {
     if(user.getRole().equals(Role.STUDENT)){
       sections = sections.stream()
         .filter(Section::getIsActive)
-        .map(Section::new) 
+        .map(section -> section.toBuilder().build())
         .peek(copy -> {
             List<Topic> activeTopics = copy.getTopics().stream()
               .filter(Topic::getIsActive)
@@ -63,17 +61,11 @@ public class AuthenticatedController {
     
     List<SectionOverviewResponse> overview = sectionMapperOverview.toResponse(sections);
 
-    return ResponseEntity
-    .status(HttpStatus.OK)
-    .body(new ApiResponse<>(
-      200,
-      "Section overview",
-      overview
-    ));
+    return ApiResponse.ok("Section overview", overview);
   }
 
   @GetMapping ("/topics")
-  public ResponseEntity getTopicWithQuestionsAndAnswers(@RequestParam UUID topicId) {
+  public ResponseEntity<ApiResponse<Object>> getTopicWithQuestionsAndAnswers(@RequestParam UUID topicId) {
     return topicService.getTopicWithQuestionsAndAnswers(topicId);
   }
 }
