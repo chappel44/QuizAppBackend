@@ -8,6 +8,9 @@ import com.tasks.organizer.entities.User;
 import com.tasks.organizer.repository.UserRepository;
 import com.tasks.organizer.service.AuthenticationService;
 import com.tasks.organizer.service.JwtService;
+
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 
 import java.util.HashMap;
@@ -21,7 +24,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
+@AllArgsConstructor
 public class AuthenticationServiceImpl implements AuthenticationService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;

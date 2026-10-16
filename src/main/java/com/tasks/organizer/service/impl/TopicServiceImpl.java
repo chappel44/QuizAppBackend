@@ -31,26 +31,20 @@ import com.tasks.organizer.repository.QuestionRepository;
 import com.tasks.organizer.repository.SectionRepository;
 import com.tasks.organizer.repository.TopicRepository;
 import com.tasks.organizer.service.TopicService;
-
+import com.tasks.organizer.dto.response.ApiResponse;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 
 @Service 
-@AllArgsConstructor 
+@AllArgsConstructor
 public class TopicServiceImpl implements TopicService {
   final TopicRepository topicRepository;
   final SectionRepository sectionRepository;
   final QuestionRepository questionRepository;
   final AnswerRepository answerRepository;
   final TopicMapper topicMapper;
-
-  public record ApiResponse<T>(
-    int status,
-    String message,
-    T data
-  ) {}
-
-  final Integer answerLimit = 5;
+  
+  private static final int ANSWER_LIMIT = 5;
 
   @Transactional
   private Question createQuestion(QuestionDTO question, Topic topic) {
@@ -72,8 +66,8 @@ public class TopicServiceImpl implements TopicService {
       newAnswers.add(newAnswer);
 
       count++;
-      if(count > answerLimit){
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Max answer count of " + answerLimit + " exceeded.");
+      if(count > ANSWER_LIMIT){
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Max answer count of " + ANSWER_LIMIT + " exceeded.");
       }
       
       if(newAnswer.getIsCorrect()){
@@ -124,7 +118,7 @@ public class TopicServiceImpl implements TopicService {
   }
 
   @Transactional 
-  public ResponseEntity updateTopic(UUID topicId, CreateTopicDTO request) {
+  public ResponseEntity<ApiResponse<Object>> updateTopic(UUID topicId, CreateTopicDTO request) {
     Topic activeTopic = topicRepository.findById(topicId)
       .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found" + topicId));
     
@@ -209,13 +203,7 @@ public class TopicServiceImpl implements TopicService {
         for(AnswerDTO requestAnswer : requestQuestion.getAnswers()) {
           if(requestAnswer.getIsCorrect()){ //Ensure no duplicate correct answers are inserted
             if (trueFound) {
-              return ResponseEntity
-              .status(HttpStatus.BAD_REQUEST)
-              .body(new ApiResponse<>(
-                400,
-                "Duplicate correct answer found on question ",
-                requestAnswer
-              ));
+              return ApiResponse.of(HttpStatus.BAD_REQUEST, "Duplicate correct answer found on question ", requestAnswer);
             }
             
             trueFound=true;
@@ -235,14 +223,8 @@ public class TopicServiceImpl implements TopicService {
           }
 
           count++;
-          if(count > answerLimit){
-            return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
-            .body(new ApiResponse<>(
-                400,
-                "Max answer count of " + answerLimit + " exceeded.",
-                activeQuestion.getId()
-            ));
+          if(count > ANSWER_LIMIT){
+            return ApiResponse.of(HttpStatus.BAD_REQUEST, "Max answer count of " + ANSWER_LIMIT + " exceeded.", activeQuestion.getId());
           }
         }
 
@@ -276,17 +258,11 @@ public class TopicServiceImpl implements TopicService {
 
     System.out.println("Topic Changed?" + topicChange);
     System.out.println("Question Changed?" + questionChange);
-      
-    return ResponseEntity
-    .status(HttpStatus.NO_CONTENT)
-    .body(new ApiResponse<>(
-      204,
-      "Successfully updated topic",
-      null 
-    ));
+
+    return ApiResponse.of(HttpStatus.NO_CONTENT, "Successfully updated topic", null);
   }
 
-  public ResponseEntity getTopicWithQuestionsAndAnswers(UUID topicId){
+  public ResponseEntity<ApiResponse<Object>> getTopicWithQuestionsAndAnswers(UUID topicId){
     Topic topic = topicRepository.findById(topicId)
       .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found" + topicId));
     
@@ -307,12 +283,6 @@ public class TopicServiceImpl implements TopicService {
       formattedTopic = topicMapper.toResponse(topic);
     }
 
-    return ResponseEntity
-    .status(HttpStatus.OK)
-        .body(new ApiResponse<>(
-        200,
-        "Topic Retrieved",
-        formattedTopic
-    ));
+    return ApiResponse.ok("Topic Retrieved", formattedTopic);
   }
 }

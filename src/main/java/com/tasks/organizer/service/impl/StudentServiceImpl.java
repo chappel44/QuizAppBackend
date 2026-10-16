@@ -15,7 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import com.tasks.organizer.controller.AdminController.ApiResponse;
+import com.tasks.organizer.dto.response.ApiResponse;
 import com.tasks.organizer.dto.response.AttemptResponse;
 import com.tasks.organizer.dto.response.AttemptsWithTopicResponse;
 import com.tasks.organizer.dto.response.GetAttemptResponse;
@@ -38,10 +38,11 @@ import com.tasks.organizer.repository.TopicRepository;
 import com.tasks.organizer.service.StudentService;
 
 import org.springframework.transaction.annotation.Transactional;
+
 import lombok.AllArgsConstructor;
 
 @Service 
-@AllArgsConstructor 
+@AllArgsConstructor  
 public class StudentServiceImpl implements StudentService{
   final TopicRepository topicRepository;
   final AttemptRepository attemptRepository;
@@ -52,21 +53,17 @@ public class StudentServiceImpl implements StudentService{
   final AttemptMapper attemptMapper;
 
   @Transactional
-  public ResponseEntity<ApiResponse<?>> createAttempt(UUID topicId) {
+  public ResponseEntity<ApiResponse<Object>> createAttempt(UUID topicId) {
     Optional<Topic> topicOpt = topicRepository.findById(topicId);
 
     if (topicOpt.isEmpty()) {
-      return ResponseEntity
-      .status(HttpStatus.NOT_FOUND)
-      .body(new ApiResponse<>(404, "Topic not found", null));
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found");
     }
 
     Topic topic = topicOpt.get();
 
     if(topic.getIsActive().equals(false)){
-      return ResponseEntity
-      .status(HttpStatus.NOT_FOUND)
-      .body(new ApiResponse<>(409, "Topic is inactive", null));
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic is inactive");
     }
 
     // Start with only active questions
@@ -114,27 +111,20 @@ public class StudentServiceImpl implements StudentService{
       attemptQuestions.add(attemptQuestion);
     }
 
-    newAttempt.setAttemptQuestions(attemptQuestions);
+    // newAttempt.setAttemptQuestions(attemptQuestions);
 
     Attempt insertedAttempt = attemptRepository.save(newAttempt);
+    attemptQuestionRepository.saveAll(attemptQuestions);
 
-    return ResponseEntity
-    .status(HttpStatus.OK)
-    .body(new ApiResponse<>(200, "Successfully created attempt", insertedAttempt.getId()));
+    return ApiResponse.ok("Successfully created attempt", insertedAttempt.getId());
   }
 
   @Transactional
-  public ResponseEntity recordAttemptQuestion(UUID answerId, UUID attemptQuestionId){
+  public ResponseEntity<ApiResponse<Object>> recordAttemptQuestion(UUID answerId, UUID attemptQuestionId){
     Optional<AttemptQuestion> attemptQuestionOpt = attemptQuestionRepository.findById(attemptQuestionId);
     
     if(!attemptQuestionOpt.isPresent()){
-      return ResponseEntity
-      .status(HttpStatus.NOT_FOUND)
-      .body(new ApiResponse<>(
-        404,
-        "Attempt question not found",
-        attemptQuestionId
-      ));
+      return ApiResponse.of(HttpStatus.NOT_FOUND, "Attempt question not found", attemptQuestionId);
     }
 
     AttemptQuestion attemptQuestion = attemptQuestionOpt.get();
@@ -145,34 +135,16 @@ public class StudentServiceImpl implements StudentService{
     User user = (User) authentication.getPrincipal();
 
     if(!attempt.getUser().getId().equals(user.getId())){
-      return ResponseEntity
-      .status(HttpStatus.UNAUTHORIZED)
-      .body(new ApiResponse<>(
-        403,
-        "Unauthorized",
-        null
-      ));
+      return ApiResponse.error(HttpStatus.UNAUTHORIZED, "Unauthorized");
     }
 
     if(attempt.isFinalized()){
-      return ResponseEntity
-      .status(HttpStatus.CONFLICT )
-      .body(new ApiResponse<>(
-        409,
-        "This attempts grade has been finalized",
-        attempt.getId()
-      ));
+      return ApiResponse.of(HttpStatus.CONFLICT, "This attempts grade has been finalized", attempt.getId());
     }
 
     Boolean isCorrect = attemptQuestion.getIsCorrect();
     if(Boolean.TRUE.equals(isCorrect)){ 
-      return ResponseEntity
-      .status(HttpStatus.CONFLICT)
-      .body(new ApiResponse<>(
-        409,
-        "Question already graded as correct",
-        attemptQuestionId
-      ));
+      return ApiResponse.of(HttpStatus.CONFLICT, "Question already graded as correct", attemptQuestionId);
     }
 
     Question question = attemptQuestion.getQuestion();
@@ -193,13 +165,7 @@ public class StudentServiceImpl implements StudentService{
     }
 
     if(!answerFound){
-      return ResponseEntity
-      .status(HttpStatus.NOT_FOUND)
-      .body(new ApiResponse<>(
-        404,
-        "Answer provided doesnt exist in answer set.",
-        answerId
-      ));
+      return ApiResponse.of(HttpStatus.NOT_FOUND, "Answer provided doesnt exist in answer set.", answerId);
     }
 
     attemptQuestion.setSubmittedAnswerId(answerId);
@@ -213,36 +179,18 @@ public class StudentServiceImpl implements StudentService{
       attemptQuestion.setIsCorrect(answerCorrect);
     }
     else{ //For tests dont return whether the answer is correct or not, just record answer id
-      return ResponseEntity
-      .status(HttpStatus.OK)
-      .body(new ApiResponse<>(
-        200,
-        "Answer successfully recorded",
-        null
-      ));
+      return ApiResponse.ok("Answer successfully recorded", null);
     }
     
-    return ResponseEntity
-    .status(HttpStatus.OK)
-    .body(new ApiResponse<>(
-      200,
-      "Answer successfully recorded",
-      answerCorrect
-    ));
+    return ApiResponse.ok("Answer successfully recorded", answerCorrect);
   }
 
   @Transactional 
-  public ResponseEntity gradeAttempt(UUID attemptId) {
+  public ResponseEntity<ApiResponse<Object>> gradeAttempt(UUID attemptId) {
     Optional<Attempt> attemptOpt = attemptRepository.findById(attemptId);
 
     if(!attemptOpt.isPresent()){
-      return ResponseEntity
-      .status(HttpStatus.NOT_FOUND)
-      .body(new ApiResponse<>(
-        404,
-        "Attempt could not be found",
-        null
-      ));
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt could not be found");
     }
 
     Attempt attempt = attemptOpt.get();
@@ -251,35 +199,17 @@ public class StudentServiceImpl implements StudentService{
     User user = (User) authentication.getPrincipal();
 
     if(!attempt.getUser().getId().equals(user.getId())) {
-      return ResponseEntity
-      .status(HttpStatus.UNAUTHORIZED)
-      .body(new ApiResponse<>(
-        403,
-        "Unauthorized",
-        null
-      ));
+      return ApiResponse.error(HttpStatus.UNAUTHORIZED, "Unauthorized");
     }
 
     if(attempt.isFinalized()) {
-      return ResponseEntity
-      .status(HttpStatus.CONFLICT)
-      .body(new ApiResponse<>(
-        409,
-        "This attempt has already been graded",
-        null
-      ));
+      return ApiResponse.error(HttpStatus.CONFLICT, "This attempt has already been graded");
     }
 
     Optional<Topic> attemptTopicOpt = topicRepository.findById(attempt.getTopic().getId()); 
     
     if(!attemptTopicOpt.isPresent()){
-      return ResponseEntity
-      .status(HttpStatus.NOT_FOUND)
-      .body(new ApiResponse<>(
-        404,
-        "Topic associated with attempt not found",
-        null
-      ));
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic associated with attempt not found");
     }
 
     Topic attemptTopic = attemptTopicOpt.get();
@@ -288,13 +218,7 @@ public class StudentServiceImpl implements StudentService{
     List<Question> attemptTopicQuestions = questionRepository.findByTopicIdWithAnswers(attempt.getTopic().getId());
     
     if(!attemptTopic.getTopicType().equals(TopicType.TEST)){
-      return ResponseEntity
-      .status(HttpStatus.CONFLICT)
-      .body(new ApiResponse<>(
-        409,
-        "This attempt is not a tested event",
-        null
-      ));
+      return ApiResponse.error(HttpStatus.CONFLICT, "This attempt is not a tested event");
     }
 
     List<AttemptQuestion> attemptQuestions = attempt.getAttemptQuestions();
@@ -340,55 +264,11 @@ public class StudentServiceImpl implements StudentService{
     attempt.setPointsEarned(pointsEarned);
     attempt.setFinalized(true);
     System.out.println("ATTEMPT SHOULD BE FINALIZED:"+ attempt.isFinalized());
-    return ResponseEntity
-    .status(HttpStatus.OK)
-    .body(new ApiResponse<>(
-      200,
-      "Test grade submitted",
-      null
-    ));    
+    return ApiResponse.ok("Test grade submitted", null);    
   }
 
-  /*
-  Query params: attemptId
-  Expected Response:
-  {
-    Shape returned
-    attempt: {
-      id,
-      total_points,
-      points_earned,
-      attempt_questions: [
-        {
-          id,
-          is_correct,
-          submitted_answer_id
-        }
-      ]
-    },
-    topics: {
-      id,
-      name,
-      description,
-      topic_type,
-      questions: [
-        {
-          id,
-          question,
-          points,
-          image_url,
-          answers: [
-            {
-              id,
-              answer
-            }
-          ]
-        }
-      ]
-    }
-  }
-  */
-  public ResponseEntity getAttempt(UUID attemptId){
+  @Transactional (readOnly = true) //This is used to prevent calling setQuestion() and it override the topic questions
+  public ResponseEntity<ApiResponse<Object>> getAttempt(UUID attemptId){
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
@@ -396,30 +276,18 @@ public class StudentServiceImpl implements StudentService{
 
     if (attemptOpt.isEmpty()) {
       System.out.println("No attempt found for id: " + attemptId);
-      return ResponseEntity
-      .status(HttpStatus.NOT_FOUND)
-      .body(new ApiResponse<>(404, "Attempt not found", null));
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
     }
 
     Attempt attempt = attemptOpt.get();
 
     if(!attempt.getUser().getId().equals(user.getId()) && user.getRole() != Role.ADMIN){
-      return ResponseEntity
-      .status(HttpStatus.UNAUTHORIZED)
-      .body(new ApiResponse<>(
-        403,
-        "Unauthorized",
-        null
-      ));
+      return ApiResponse.error(HttpStatus.UNAUTHORIZED, "Unauthorized");
     }
 
     Topic topic = attempt.getTopic();
-
-    List<UUID> attemptQuestionIds = new ArrayList<>();
-
-    for (AttemptQuestion aq : attempt.getAttemptQuestions()) {
-      attemptQuestionIds.add(aq.getQuestion().getId());
-    }
+    List question = questionRepository.findByTopicIdWithAnswers(topic.getId());
+    topic.setQuestions(question);
 
     TopicResponse formattedTopic = TopicResponse.builder().id(topic.getId())
     .createdAt(topic.getCreatedAt())
@@ -431,48 +299,34 @@ public class StudentServiceImpl implements StudentService{
     .build();
 
     AttemptResponse attemptResponse = attemptMapper.toResponse(attempt);
-    System.out.println(attemptResponse);
-    System.out.println(attempt);
 
     GetAttemptResponse getAttemptResponse = GetAttemptResponse.builder()
     .attempt(attemptResponse)
     .topic(formattedTopic).build();
 
-    return ResponseEntity
-    .status(HttpStatus.OK)
-    .body(new ApiResponse<>(
-      200,
-      "Attempt retrieval successful",
-      getAttemptResponse
-    ));
+    return ApiResponse.ok("Attempt retrieval successful", getAttemptResponse);
   }
 
-  public ResponseEntity getTopicAndAttempts(UUID topicId){
+  public ResponseEntity<ApiResponse<Object>> getTopicAndAttempts(UUID topicId){
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
     Optional<Topic> topicOpt = topicRepository.findById(topicId);
 
     if(topicOpt.isEmpty()){
-      return ResponseEntity
-      .status(HttpStatus.NOT_FOUND)
-      .body(new ApiResponse<>(404, "Topic not found", null));
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found");
     }
 
     Topic topic = topicOpt.get();
     
     if(topic.getIsActive().equals(false)){
-      return ResponseEntity
-      .status(HttpStatus.CONFLICT)
-      .body(new ApiResponse<>(409, "Topic is inactive", null));
+      return ApiResponse.error(HttpStatus.CONFLICT, "Topic is inactive");
     }
 
     Optional<List<Attempt>> currentAttemptsOpt = attemptRepository.findByUserIdAndTopicId(user.getId(), topic.getId());
 
     if(currentAttemptsOpt.isEmpty()){
-      return ResponseEntity
-      .status(HttpStatus.NOT_FOUND)
-      .body(new ApiResponse<>(404, "Attempts with topic not found", null)); 
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempts with topic not found"); 
     }
 
     List<Attempt> currentAttempts = currentAttemptsOpt.get();
@@ -487,20 +341,16 @@ public class StudentServiceImpl implements StudentService{
       attemptResponses.add(attResponse);
     }
 
-    TopicResponse topicResponse = topicMapper.toResponse(topic);
-    topicResponse.setQuestions(null);
+    // TopicResponse topicResponse = topicMapper.toResponse(topic);
+    // topicResponse.setQuestions(null);
+
+    TopicResponse topicResponse = TopicResponse.builder().name(topic.getName()).id(topic.getId()).topicType(topic.getTopicType()).build();
 
     AttemptsWithTopicResponse attemptsWithTopicResponse = new AttemptsWithTopicResponse();
 
     attemptsWithTopicResponse.setAttempts(attemptResponses);
     attemptsWithTopicResponse.setTopic(topicResponse);
 
-    return ResponseEntity
-    .status(HttpStatus.OK)
-    .body(new ApiResponse<>(
-      200,
-      "Attempts and topic successfully retrieved",
-      attemptsWithTopicResponse
-    ));
+    return ApiResponse.ok("Attempts and topic successfully retrieved", attemptsWithTopicResponse);
   }
 }
