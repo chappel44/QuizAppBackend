@@ -1,7 +1,9 @@
 package com.tasks.organizer.config;
 
-import com.tasks.organizer.entities.Role;
-import com.tasks.organizer.service.UserService;
+import com.tasks.organizer.authentication.JwtAuthenticationFilter;
+
+import com.tasks.organizer.user.entity.Role;
+import com.tasks.organizer.user.service.UserService;
 
 import java.util.List;
 
