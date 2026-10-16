@@ -1,6 +1,98 @@
 
 # API Route Documentation
 
+## Auth
+
+Base path: `/api/auth`
+
+These routes are public and do not require a token. Both return a JWT that is used to authenticate every other request.
+
+### Authenticating requests
+
+All authenticated requests (`/api/authenticated/**`, `/api/student/**`, `/api/admin/**`) expect the token in the `Authorization` header:
+
+```
+Authorization: Bearer <token>
+```
+
+---
+
+### Sign up
+
+`POST /api/auth/signup`
+
+Creates a new user account and returns a token for it.
+
+**Rules**
+
+1. `password` must be at least 2 characters long.
+2. `email` must not already exist in the database.
+
+**Request body**
+
+```jsonc
+{
+  "firstName": "string",
+  "lastName": "string",
+  "email": "user@example.com",
+  "password": "string" // min 2 characters
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `firstName` | String | Yes | |
+| `lastName` | String | Yes | |
+| `email` | String | Yes | Must not already be registered |
+| `password` | String | Yes | Min 2 characters |
+
+**Response**
+
+```jsonc
+{
+  "token": "string" // JWT, send as Authorization: Bearer <token>
+}
+```
+
+**Responses**
+
+| Status | Message |
+|---|---|
+| `200` | Account created, token returned |
+| `400` | Email already exists or password is too short (empty body) |
+
+---
+
+### Sign in
+
+`POST /api/auth/signin`
+
+Authenticates an existing user and returns a token.
+
+**Request body**
+
+```jsonc
+{
+  "email": "user@example.com",
+  "password": "string"
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `email` | String | Yes | |
+| `password` | String | Yes | |
+
+**Response**
+
+```jsonc
+{
+  "token": "string" // JWT, send as Authorization: Bearer <token>
+}
+```
+
+----------
+
 ## Admin: Topics
 
 Base path: `/api/admin/topics`
