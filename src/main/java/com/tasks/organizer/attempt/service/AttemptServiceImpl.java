@@ -200,7 +200,7 @@ public class AttemptServiceImpl implements AttemptService{
     User user = (User) authentication.getPrincipal();
 
     if(!attempt.getUser().getId().equals(user.getId())) {
-      return ApiResponse.error(HttpStatus.UNAUTHORIZED, "Unauthorized");
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Unauthorized");
     }
 
     if(attempt.isFinalized()) {
@@ -214,8 +214,7 @@ public class AttemptServiceImpl implements AttemptService{
     }
 
     Topic attemptTopic = attemptTopicOpt.get();
-
-
+    
     List<Question> attemptTopicQuestions = questionRepository.findByTopicIdWithAnswers(attempt.getTopic().getId());
     
     if(!attemptTopic.getTopicType().equals(TopicType.TEST)){
@@ -276,34 +275,35 @@ public class AttemptServiceImpl implements AttemptService{
     Optional<Attempt> attemptOpt = attemptRepository.findByTopicIdWithAnswers(attemptId);
 
     if (attemptOpt.isEmpty()) {
-      System.out.println("No attempt found for id: " + attemptId);
       return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
     }
 
     Attempt attempt = attemptOpt.get();
 
     if(!attempt.getUser().getId().equals(user.getId()) && user.getRole() != Role.ADMIN){
-      return ApiResponse.error(HttpStatus.UNAUTHORIZED, "Unauthorized");
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Unauthorized");
     }
 
     Topic topic = attempt.getTopic();
     List question = questionRepository.findByTopicIdWithAnswers(topic.getId());
     topic.setQuestions(question);
 
-    TopicResponse formattedTopic = TopicResponse.builder().id(topic.getId())
-    .createdAt(topic.getCreatedAt())
-    .name(topic.getName())
-    .description(topic.getName())
-    .isActive(topic.getIsActive())
-    .dueDate(topic.getDueDate())
-    .topicType(topic.getTopicType())
+    TopicResponse formattedTopic = TopicResponse.builder()
+      .id(topic.getId())
+      .createdAt(topic.getCreatedAt())
+      .name(topic.getName())
+      .description(topic.getName())
+      .isActive(topic.getIsActive())
+      .dueDate(topic.getDueDate())
+      .topicType(topic.getTopicType())
     .build();
 
     AttemptResponse attemptResponse = attemptMapper.toResponse(attempt);
 
     GetAttemptResponse getAttemptResponse = GetAttemptResponse.builder()
-    .attempt(attemptResponse)
-    .topic(formattedTopic).build();
+      .attempt(attemptResponse)
+      .topic(formattedTopic)
+    .build();
 
     return ApiResponse.ok("Attempt retrieval successful", getAttemptResponse);
   }
