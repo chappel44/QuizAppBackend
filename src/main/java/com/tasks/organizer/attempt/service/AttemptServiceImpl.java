@@ -280,9 +280,9 @@ public class AttemptServiceImpl implements AttemptService{
 
     Attempt attempt = attemptOpt.get();
 
-    // if(!attempt.getUser().getId().equals(user.getId()) && user.getRole() != Role.ADMIN){
-    //   return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
-    // }
+    if(!attempt.getUser().getId().equals(user.getId()) && user.getRole() != Role.ADMIN){
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
+    }
 
     Topic topic = attempt.getTopic();
     List question = questionRepository.findByTopicIdWithAnswers(topic.getId());
