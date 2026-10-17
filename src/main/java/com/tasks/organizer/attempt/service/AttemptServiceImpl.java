@@ -191,7 +191,7 @@ public class AttemptServiceImpl implements AttemptService{
     Optional<Attempt> attemptOpt = attemptRepository.findById(attemptId);
 
     if(!attemptOpt.isPresent()){
-      return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt could not be found");
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
     }
 
     Attempt attempt = attemptOpt.get();
@@ -200,7 +200,7 @@ public class AttemptServiceImpl implements AttemptService{
     User user = (User) authentication.getPrincipal();
 
     if(!attempt.getUser().getId().equals(user.getId())) {
-      return ApiResponse.error(HttpStatus.NOT_FOUND, "Unauthorized");
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
     }
 
     if(attempt.isFinalized()) {
@@ -280,9 +280,9 @@ public class AttemptServiceImpl implements AttemptService{
 
     Attempt attempt = attemptOpt.get();
 
-    if(!attempt.getUser().getId().equals(user.getId()) && user.getRole() != Role.ADMIN){
-      return ApiResponse.error(HttpStatus.NOT_FOUND, "Unauthorized");
-    }
+    // if(!attempt.getUser().getId().equals(user.getId()) && user.getRole() != Role.ADMIN){
+    //   return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
+    // }
 
     Topic topic = attempt.getTopic();
     List question = questionRepository.findByTopicIdWithAnswers(topic.getId());

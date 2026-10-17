@@ -51,7 +51,7 @@ class AttemptOwnershipTest {
   User owner, intruder;
   Attempt attempt;
 
-  @BeforeEach 
+  @BeforeEach
   void setUp() {
     owner = userRepository.save(User.builder()
       .email("owner@test.com")
