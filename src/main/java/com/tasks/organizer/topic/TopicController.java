@@ -32,7 +32,7 @@ public class TopicController {
         return topicService.generateTopic(entity, sectionId, organizationId);
     }
 
-    @PatchMapping ("/api/admin/topics")
+    @PatchMapping ("/api/authenticated/topics")
     public ResponseEntity<ApiResponse<Object>> updateTopic(@RequestParam UUID topicId, @Validated @RequestBody CreateTopicDTO request){
         return topicService.updateTopic(topicId, request);
     }

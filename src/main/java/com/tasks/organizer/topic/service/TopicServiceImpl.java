@@ -89,11 +89,12 @@ public class TopicServiceImpl implements TopicService {
   }
 
   //ORG_ADMIN is always allowed, TEACHER must hold the required permission, everyone else is rejected
-  private void checkOrgPermission(Organization organization, User user, OrgPermissions requiredPermission) {
+  //Non members and members without permission get a 404 so the resource isn't revealed
+  private void checkOrgPermission(Organization organization, User user, OrgPermissions requiredPermission, String notFoundMessage) {
     OrganizationMember member = organization.getOrganizationMembers().stream()
       .filter(m -> m.getUser() != null && Objects.equals(m.getUser().getId(), user.getId()))
       .findFirst()
-      .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a member of organization " + organization.getId()));
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, notFoundMessage));
 
     if(!member.isActive()){
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Organization membership is inactive");
@@ -105,7 +106,7 @@ public class TopicServiceImpl implements TopicService {
       default -> false;
     };
     if(!allowed){
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User does not have permission " + requiredPermission + " in this organization");
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, notFoundMessage);
     }
   }
 
@@ -131,7 +132,7 @@ public class TopicServiceImpl implements TopicService {
         organization = organizationRepository.findById(organizationId)
           .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Organization not found " + organizationId));
 
-        checkOrgPermission(organization, user, OrgPermissions.CREATE_TOPIC);
+        checkOrgPermission(organization, user, OrgPermissions.CREATE_TOPIC, "Section not found " + sectionId);
 
         if(entity.getTopic().getVisibility() == null){
           throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Visibility is required for organization topics");
@@ -178,7 +179,7 @@ public class TopicServiceImpl implements TopicService {
 
     Organization organization = activeTopic.getOrganization();
     if(organization != null){
-      checkOrgPermission(organization, user, OrgPermissions.UPDATE_TOPIC);
+      checkOrgPermission(organization, user, OrgPermissions.UPDATE_TOPIC, "Topic not found " + topicId);
 
       //Visibility only applies to organization topics and does not affect the version
       if(request.getTopic().getVisibility() != null){
@@ -199,7 +200,7 @@ public class TopicServiceImpl implements TopicService {
       !requestTopic.getTopicType().equals(activeTopic.getTopicType()) ||
       !Objects.equals(requestTopic.getSectionId(), activeTopic.getSectionId()) ||
       (requestTopic.getQuestionPoolSize() != activeTopic.getQuestionPoolSize()
-        && requestTopic.getTopicType() == TopicType.RANDOM_QUESTIONS);    
+        && requestTopic.getTopicType() == TopicType.RANDOM_QUESTIONS);
     
     activeTopic.setName(requestTopic.getName());
     activeTopic.setDescription(requestTopic.getDescription());
