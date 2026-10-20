@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tasks.organizer.common.dto.ApiResponse;
 import com.tasks.organizer.question.mapper.QuestionMapper;
-import com.tasks.organizer.attempt.mapper.ResultMapper;
 import com.tasks.organizer.attempt.service.AttemptService;
 import com.tasks.organizer.authentication.service.JwtService;
 import com.tasks.organizer.topic.TopicRepository;
@@ -25,10 +24,8 @@ import org.springframework.web.bind.annotation.PatchMapping;
 @RequestMapping ("/api/student")
 public class AttemptController {
   final TopicRepository topicRepository;
-  final ResultRepository resultRepository;
   final QuestionMapper questionMapper;
   final JwtService jwtService;
-  final ResultMapper resultMapper;
   final AttemptService studentService;
 
   @PostMapping("/attempt")

@@ -16,7 +16,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.tasks.organizer.common.dto.ApiResponse;
-import com.tasks.organizer.attempt.ResultRepository;
 import com.tasks.organizer.attempt.dto.response.AttemptResponse;
 import com.tasks.organizer.attempt.dto.response.AttemptsWithTopicResponse;
 import com.tasks.organizer.attempt.dto.response.GetAttemptResponse;
@@ -47,7 +46,6 @@ public class AttemptServiceImpl implements AttemptService{
   final AttemptRepository attemptRepository;
   final AttemptQuestionRepository attemptQuestionRepository;
   final QuestionRepository questionRepository;
-  final ResultRepository resultRepository;
   final TopicMapper topicMapper;
   final AttemptMapper attemptMapper;
 
