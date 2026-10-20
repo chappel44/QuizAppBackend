@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 
 @RequiredArgsConstructor 
 @RestController
-@RequestMapping ("/api/student")
+@RequestMapping ("/api/authenticated")
 public class AttemptController {
   final TopicRepository topicRepository;
   final QuestionMapper questionMapper;
@@ -44,12 +44,12 @@ public class AttemptController {
   }
 
   @GetMapping("/attempt")
-  public ResponseEntity<ApiResponse<Object>> getAttempt(@RequestParam (required = true) UUID attemptId) {
-    return studentService.getAttempt(attemptId);
+  public ResponseEntity<ApiResponse<Object>> getAttempt(@RequestParam (required = true) UUID attemptId, @RequestParam (required = false) UUID userId) {
+    return studentService.getAttempt(attemptId, userId);
   }
 
   @GetMapping("/attempts")
-  public ResponseEntity<ApiResponse<Object>> getAttemptsWithTopic(@RequestParam (required = true) UUID topicId) {
-    return studentService.getTopicAndAttempts(topicId);
+  public ResponseEntity<ApiResponse<Object>> getAttemptsWithTopic(@RequestParam (required = true) UUID topicId, @RequestParam (required = false) UUID userId) {
+    return studentService.getTopicAndAttempts(topicId, userId);
   }
 }
