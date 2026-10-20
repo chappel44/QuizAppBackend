@@ -280,7 +280,7 @@ public class AttemptServiceImpl implements AttemptService{
 
     Attempt attempt = attemptOpt.get();
 
-    if(!attempt.getUser().getId().equals(user.getId()) && user.getRole() != Role.ADMIN){
+    if(!attempt.getUser().getId().equals(user.getId()) && user.getRole() != Role.SITE_ADMIN){
       return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
     }
 

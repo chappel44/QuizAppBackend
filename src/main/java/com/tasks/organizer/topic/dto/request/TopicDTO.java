@@ -3,6 +3,7 @@ package com.tasks.organizer.topic.dto.request;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.tasks.organizer.topic.entity.Visibility;
 import com.tasks.organizer.topic.entity.Topic.TopicType;
 
 import jakarta.validation.constraints.Min;
@@ -34,4 +35,7 @@ public class TopicDTO {
   private Integer questionPoolSize;
 
   private UUID sectionId;
+
+  //Only used when the topic belongs to an organization, public user topics are always PUBLIC
+  private Visibility visibility;
 }

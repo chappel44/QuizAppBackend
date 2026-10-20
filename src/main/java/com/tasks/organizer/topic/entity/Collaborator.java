@@ -17,13 +17,11 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder (toBuilder = true)
 @Getter @Setter 
 public class Collaborator extends BaseEntity {
-  @JoinColumn (name = "user_id")
+  @JoinColumn (name = "user_id", nullable = false)
   @ManyToOne 
-  @Column (nullable = false)
   User user;
   
-  @JoinColumn (name = "topic_id")
+  @JoinColumn (name = "topic_id", nullable = false)
   @ManyToOne
-  @Column (nullable = false)
   Topic topic;
 }

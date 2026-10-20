@@ -1,6 +1,7 @@
 package com.tasks.organizer.topic.service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,12 @@ import com.tasks.organizer.question.entity.Question;
 import com.tasks.organizer.user.entity.Role;
 import com.tasks.organizer.section.entity.Section;
 import com.tasks.organizer.topic.entity.Topic;
+import com.tasks.organizer.topic.entity.Visibility;
+import com.tasks.organizer.organization.OrganizationRepository;
+import com.tasks.organizer.organization.entity.Organization;
+import com.tasks.organizer.organizationmember.entity.OrgPermissions;
+import com.tasks.organizer.organizationmember.entity.OrgRoles;
+import com.tasks.organizer.organizationmember.entity.OrganizationMember;
 import com.tasks.organizer.user.entity.User;
 import com.tasks.organizer.topic.entity.Topic.TopicType;
 import com.tasks.organizer.topic.mapper.TopicMapper;
@@ -41,6 +48,7 @@ public class TopicServiceImpl implements TopicService {
   final SectionRepository sectionRepository;
   final QuestionRepository questionRepository;
   final AnswerRepository answerRepository;
+  final OrganizationRepository organizationRepository;
   final TopicMapper topicMapper;
   
   private static final int ANSWER_LIMIT = 5;
@@ -80,19 +88,63 @@ public class TopicServiceImpl implements TopicService {
     return newQuestion;
   }
 
+  //ORG_ADMIN is always allowed, TEACHER must hold the required permission, everyone else is rejected
+  private void checkOrgPermission(Organization organization, User user, OrgPermissions requiredPermission) {
+    OrganizationMember member = organization.getOrganizationMembers().stream()
+      .filter(m -> m.getUser() != null && Objects.equals(m.getUser().getId(), user.getId()))
+      .findFirst()
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a member of organization " + organization.getId()));
+
+    if(!member.isActive()){
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Organization membership is inactive");
+    }
+
+    boolean allowed = switch (member.getRole()) {
+      case ORG_ADMIN -> true;
+      case TEACHER -> Arrays.asList(member.getPermissions()).contains(requiredPermission);
+      default -> false;
+    };
+    if(!allowed){
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User does not have permission " + requiredPermission + " in this organization");
+    }
+  }
+
   @Transactional 
-  public String generateTopic(CreateTopicDTO entity, UUID sectionId){
+  public String generateTopic(CreateTopicDTO entity, UUID sectionId, UUID organizationId){
       Section section = sectionRepository.findById(sectionId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Section not found " + sectionId));
 
       if(!section.getIsActive()){
         throw new ResponseStatusException(HttpStatus.CONFLICT, "This section is marked inactive " + sectionId);
       }
+
       TopicDTO topicDTO = entity.getTopic();
+
+      Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+      User user = (User) authentication.getPrincipal();
+
+      //Public user topics have no organization and are always PUBLIC
+      Organization organization = null;
+      Visibility visibility = Visibility.PUBLIC;
+
+      if(organizationId != null){
+        organization = organizationRepository.findById(organizationId)
+          .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Organization not found " + organizationId));
+
+        checkOrgPermission(organization, user, OrgPermissions.CREATE_TOPIC);
+
+        if(entity.getTopic().getVisibility() == null){
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Visibility is required for organization topics");
+        }
+        visibility = entity.getTopic().getVisibility();
+      }
 
       //Construct a new Topic
       Topic newTopic = Topic.builder()
       .section(section)
+      .organization(organization)
+      .visibility(visibility)
+      .user(user)
       .topicType(topicDTO.getTopicType())
       .name(topicDTO.getName())
       .description(topicDTO.getDescription())
@@ -120,7 +172,26 @@ public class TopicServiceImpl implements TopicService {
   public ResponseEntity<ApiResponse<Object>> updateTopic(UUID topicId, CreateTopicDTO request) {
     Topic activeTopic = topicRepository.findById(topicId)
       .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found" + topicId));
-    
+
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+      User user = (User) authentication.getPrincipal();
+
+    Organization organization = activeTopic.getOrganization();
+    if(organization != null){
+      checkOrgPermission(organization, user, OrgPermissions.UPDATE_TOPIC);
+
+      //Visibility only applies to organization topics and does not affect the version
+      if(request.getTopic().getVisibility() != null){
+        activeTopic.setVisibility(request.getTopic().getVisibility());
+      }
+    }
+    else{
+      //Only return 404 for topics owned by a public user
+      if(!activeTopic.getUser().getId().equals(user.getId())){
+        return ApiResponse.of(HttpStatus.NOT_FOUND, "topic not found", null);
+      }
+    }
+
     TopicDTO requestTopic = request.getTopic();
 
     //Topic changed if a the topic type, or section it belongs to changes or if the question pool size changes.
@@ -261,25 +332,50 @@ public class TopicServiceImpl implements TopicService {
     return ApiResponse.of(HttpStatus.NO_CONTENT, "Successfully updated topic", null);
   }
 
+  //readOnly keeps setQuestions() from being flushed and lets organization members lazy load
+  @org.springframework.transaction.annotation.Transactional (readOnly = true)
   public ResponseEntity<ApiResponse<Object>> getTopicWithQuestionsAndAnswers(UUID topicId){
-    Topic topic = topicRepository.findById(topicId)
-      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found" + topicId));
-    
+    Topic topic = topicRepository.findById(topicId).orElse(null);
+    if(topic == null){
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found " + topicId);
+    }
+
     List<Question> topicQuestions = questionRepository.findByTopicIdWithAnswers(topic.getId());
     topic.setQuestions(topicQuestions);
 
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
-    Object formattedTopic;
+    //Site admins always see the correct answers
+    if(user.getRole().equals(Role.SITE_ADMIN)){
+      return ApiResponse.ok("Topic Retrieved", topicMapper.toAdminTopicResponse(topic));
+    }
 
-    if(user.getRole().equals(Role.ADMIN)){
-      //Returns an AdminTopicResponse with all fields
+    Object formattedTopic;
+    Organization organization = topic.getOrganization();
+    OrganizationMember member = organization == null ? null : organization.getOrganizationMembers().stream()
+      .filter(m -> m.isActive() && m.getUser() != null && Objects.equals(m.getUser().getId(), user.getId()))
+      .findFirst()
+      .orElse(null);
+
+    if(organization != null && topic.getVisibility() == Visibility.PRIVATE){
+      //Non members get the same 404 as a missing topic so private topics aren't revealed
+      if(member == null){
+        return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found " + topicId);
+      }
+      formattedTopic = switch (member.getRole()) {
+        case ORG_ADMIN, TEACHER -> topicMapper.toAdminTopicResponse(topic);
+        case STUDENT -> topicMapper.toResponse(topic);
+      };
+    }
+    else if(member != null && (member.getRole() == OrgRoles.ORG_ADMIN || member.getRole() == OrgRoles.TEACHER)) {
+      //Org admins and teachers see the correct answers on their organization's public topics
       formattedTopic = topicMapper.toAdminTopicResponse(topic);
     }
     else{
-      //Returns a TopicResponse
-      formattedTopic = topicMapper.toResponse(topic);
+      //Owners see the correct answers, everyone else gets the student response
+      boolean isOwner = topic.getUser() != null && Objects.equals(topic.getUser().getId(), user.getId());
+      formattedTopic = isOwner ? topicMapper.toAdminTopicResponse(topic) : topicMapper.toResponse(topic);
     }
 
     return ApiResponse.ok("Topic Retrieved", formattedTopic);

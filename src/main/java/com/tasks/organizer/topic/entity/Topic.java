@@ -3,18 +3,21 @@ package com.tasks.organizer.topic.entity;
 import com.tasks.organizer.attempt.entity.Attempt;
 import com.tasks.organizer.question.entity.Question;
 import com.tasks.organizer.section.entity.Section;
+import com.tasks.organizer.user.entity.User;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 import com.tasks.organizer.common.entity.NamedEntity;
+import com.tasks.organizer.organization.entity.Organization;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
@@ -59,6 +62,20 @@ public class Topic extends NamedEntity {
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private TopicType topicType;
+
+  //Organization is optional, if null then it means it was published by a public user
+  @ManyToOne(fetch = FetchType.LAZY, optional = true)
+  @JoinColumn (name = "organization_id", nullable = true, updatable = false)
+  private Organization organization;
+
+  @Enumerated(EnumType.STRING)
+  @Column (nullable = false, updatable = true)
+  private Visibility visibility;
+
+  //User who published the topic
+  @ManyToOne (fetch = FetchType.LAZY, optional = false)
+  @JoinColumn (name = "user_id", nullable = false, updatable = false)
+  private User user;
 
   @Min (1)
   private Integer questionPoolSize;

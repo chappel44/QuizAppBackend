@@ -37,7 +37,7 @@ class AuthenticationControllerTest {
       .password(passwordEncoder.encode("12"))
       .firstName("John")
       .lastName("Smith")
-      .role(Role.STUDENT)
+      .role(Role.SITE_ADMIN)
       .build()
     );
 

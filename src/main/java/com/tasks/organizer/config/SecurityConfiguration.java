@@ -45,9 +45,9 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests((request) ->
                     request.requestMatchers(HttpMethod.OPTIONS).permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/authenticated/**").hasAnyAuthority(Role.ADMIN.name(), Role.STUDENT.name())
-                        .requestMatchers("/api/student/**").hasAuthority(Role.STUDENT.name())
-                        .requestMatchers("/api/admin/**").hasAuthority(Role.ADMIN.name())
+                        .requestMatchers("/api/authenticated/**").hasAnyAuthority(Role.SITE_ADMIN.name(), Role.USER.name())
+                        .requestMatchers("/api/student/**").hasAuthority(Role.USER.name())
+                        .requestMatchers("/api/admin/**").hasAuthority(Role.SITE_ADMIN.name())
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(manager -> manager.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

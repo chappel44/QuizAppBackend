@@ -67,7 +67,7 @@ public class SectionController {
 
       List<Section> sections = sectionRepository.findAllWithTopics();
 
-      if(user.getRole().equals(Role.STUDENT)){
+      if(user.getRole().equals(Role.USER)){
         sections = sections.stream()
           .filter(Section::getIsActive)
           .map(section -> section.toBuilder().build())

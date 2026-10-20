@@ -71,7 +71,7 @@ class AttemptOwnershipTest {
       .password(passwordEncoder.encode("12"))
       .firstName("owner")
       .lastName("owner")
-      .role(Role.STUDENT)
+      .role(Role.SITE_ADMIN)
       .build()
     );
 
@@ -80,7 +80,7 @@ class AttemptOwnershipTest {
       .password(passwordEncoder.encode("12"))
       .firstName("intruder")
       .lastName("intruder")
-      .role(Role.STUDENT)
+      .role(Role.USER)
       .build()
     );
 

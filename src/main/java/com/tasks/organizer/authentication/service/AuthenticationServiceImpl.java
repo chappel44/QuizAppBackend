@@ -3,10 +3,16 @@ package com.tasks.organizer.authentication.service;
 import com.tasks.organizer.authentication.dto.request.SignUpRequest;
 import com.tasks.organizer.authentication.dto.request.SigninRequest;
 import com.tasks.organizer.authentication.dto.response.JwtAuthenticationResponse;
+import com.tasks.organizer.organization.OrganizationRepository;
+import com.tasks.organizer.organization.dto.OrganizationDTO;
+import com.tasks.organizer.organization.entity.Organization;
+import com.tasks.organizer.organizationmember.entity.OrgRoles;
+import com.tasks.organizer.organizationmember.entity.OrganizationMember;
 import com.tasks.organizer.user.entity.Role;
 import com.tasks.organizer.user.entity.User;
 import com.tasks.organizer.user.UserRepository;
 
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 
 import java.util.HashMap;
@@ -26,6 +32,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final OrganizationRepository organizationRepository;
 
     private Map<String, Object> generateClaims(User user){
         Map<String, Object> extraClaims = new HashMap<>();
@@ -34,7 +41,28 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return extraClaims;
     }
 
+    private void createOrganization(OrganizationDTO organizationDTO, User owner){
+        Organization organization = Organization.builder()
+            .name(organizationDTO.getName())
+            .description(organizationDTO.getDescription())
+            .maxOrgAdmins(organizationDTO.getMaxOrgAdmins())
+            .maxStudents(organizationDTO.getMaxStudents())
+            .maxTeachers(organizationDTO.getMaxTeachers())
+            .build();
+
+        //ORG_ADMIN is always allowed in checkOrgPermission so no explicit permissions are needed
+        OrganizationMember member = OrganizationMember.builder()
+            .organization(organization)
+            .user(owner)
+            .role(OrgRoles.ORG_ADMIN)
+            .build();
+        organization.getOrganizationMembers().add(member);
+
+        organizationRepository.save(organization);
+    }
+
     @Override
+    @Transactional
     public ResponseEntity<JwtAuthenticationResponse> signup(SignUpRequest request) {
         Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
         if(existingUser.isPresent()){
@@ -47,10 +75,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         var newUser = User.builder().firstName(request.getFirstName()).lastName(request.getLastName())
             .email(request.getEmail()).password(passwordEncoder.encode(request.getPassword()))
-            .role(Role.STUDENT).build();
+            .role(Role.USER).build();
 
         User user = userRepository.save(newUser);
-        
+
+        if(request.getOrganization() != null){
+            createOrganization(request.getOrganization(), user);
+        }
+
         var jwt = jwtService.generateToken(generateClaims(user), user);
         return ResponseEntity.ok(
             JwtAuthenticationResponse.builder()

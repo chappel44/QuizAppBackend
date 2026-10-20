@@ -10,4 +10,5 @@ import lombok.experimental.SuperBuilder;
 @Getter @Setter 
 public class AnswerResponseWithCorrect extends AnswerResponse{
   private boolean isCorrect;
+  private boolean isActive;
 }

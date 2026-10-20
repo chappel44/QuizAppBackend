@@ -2,10 +2,8 @@ package com.tasks.organizer.authentication.entity;
 
 import java.time.Instant;
 
-import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
-import org.hibernate.type.SqlTypes;
 
 import com.tasks.organizer.common.entity.BaseEntity;
 import com.tasks.organizer.organization.entity.Organization;
@@ -49,8 +47,7 @@ public class OrgSignupToken extends BaseEntity {
 
   @Default
   @Convert (converter = OrgPermissionsConverter.class)
-  @JdbcTypeCode (SqlTypes.ARRAY)
-  @Column (nullable = false, columnDefinition = "varchar(50) array")
+  @Column (nullable = false)
   private OrgPermissions[] permissions = new OrgPermissions[0];
 
   @Enumerated (EnumType.STRING)
