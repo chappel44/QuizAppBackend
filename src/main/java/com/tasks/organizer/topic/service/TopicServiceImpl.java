@@ -28,6 +28,7 @@ import com.tasks.organizer.topic.entity.Topic;
 import com.tasks.organizer.topic.entity.Visibility;
 import com.tasks.organizer.organization.OrganizationRepository;
 import com.tasks.organizer.organization.entity.Organization;
+import com.tasks.organizer.organizationmember.OrganizationMemberRepository;
 import com.tasks.organizer.organizationmember.entity.OrgPermissions;
 import com.tasks.organizer.organizationmember.entity.OrgRoles;
 import com.tasks.organizer.organizationmember.entity.OrganizationMember;
@@ -50,6 +51,7 @@ public class TopicServiceImpl implements TopicService {
   final AnswerRepository answerRepository;
   final OrganizationRepository organizationRepository;
   final TopicMapper topicMapper;
+  final OrganizationMemberRepository organizationMemberRepository;
   
   private static final int ANSWER_LIMIT = 5;
 
@@ -91,12 +93,12 @@ public class TopicServiceImpl implements TopicService {
   //ORG_ADMIN is always allowed, TEACHER must hold the required permission, everyone else is rejected
   //Non members and members without permission get a 404 so the resource isn't revealed
   private void checkOrgPermission(Organization organization, User user, OrgPermissions requiredPermission, String notFoundMessage) {
-    OrganizationMember member = organization.getOrganizationMembers().stream()
-      .filter(m -> m.getUser() != null && Objects.equals(m.getUser().getId(), user.getId()))
-      .findFirst()
+    OrganizationMember member = organizationMemberRepository
+      .findByOrganizationIdAndUserId(organization.getId(), user.getId())
       .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, notFoundMessage));
 
     if(!member.isActive()){
+      System.out.println("Member is inactive");
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Organization membership is inactive");
     }
 
@@ -106,14 +108,21 @@ public class TopicServiceImpl implements TopicService {
       default -> false;
     };
     if(!allowed){
+      System.out.println("MISSING THE PERMISSION " + requiredPermission);
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, notFoundMessage);
     }
   }
 
   @Transactional 
-  public String generateTopic(CreateTopicDTO entity, UUID sectionId, UUID organizationId){
+  ResponseEntity<ApiResponse<Object>> removeTopic(UUID topicId){
+    topicRepository.deleteById(topicId);
+    return ApiResponse.of(HttpStatus.NO_CONTENT, "Topic deleted", null);
+  }
+
+  @Transactional 
+  public String createTopic(CreateTopicDTO entity, UUID sectionId, UUID organizationId){
       Section section = sectionRepository.findById(sectionId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Section not found " + sectionId));
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Section not found" + sectionId));
 
       if(!section.getIsActive()){
         throw new ResponseStatusException(HttpStatus.CONFLICT, "This section is marked inactive " + sectionId);
@@ -132,7 +141,7 @@ public class TopicServiceImpl implements TopicService {
         organization = organizationRepository.findById(organizationId)
           .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Organization not found " + organizationId));
 
-        checkOrgPermission(organization, user, OrgPermissions.CREATE_TOPIC, "Section not found " + sectionId);
+        checkOrgPermission(organization, user, OrgPermissions.CREATE_TOPIC, "Section not found" + sectionId);
 
         if(entity.getTopic().getVisibility() == null){
           throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Visibility is required for organization topics");
@@ -175,7 +184,7 @@ public class TopicServiceImpl implements TopicService {
       .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found" + topicId));
 
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-      User user = (User) authentication.getPrincipal();
+    User user = (User) authentication.getPrincipal();
 
     Organization organization = activeTopic.getOrganization();
     if(organization != null){
@@ -333,8 +342,7 @@ public class TopicServiceImpl implements TopicService {
     return ApiResponse.of(HttpStatus.NO_CONTENT, "Successfully updated topic", null);
   }
 
-  //readOnly keeps setQuestions() from being flushed and lets organization members lazy load
-  @org.springframework.transaction.annotation.Transactional (readOnly = true)
+  @org.springframework.transaction.annotation.Transactional (readOnly = true) //prevents flushing the questions
   public ResponseEntity<ApiResponse<Object>> getTopicWithQuestionsAndAnswers(UUID topicId){
     Topic topic = topicRepository.findById(topicId).orElse(null);
     if(topic == null){
@@ -362,7 +370,7 @@ public class TopicServiceImpl implements TopicService {
     if(organization != null && topic.getVisibility() == Visibility.PRIVATE){
       //Non members get the same 404 as a missing topic so private topics aren't revealed
       if(member == null){
-        return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found " + topicId);
+        return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found" + topicId);
       }
       formattedTopic = switch (member.getRole()) {
         case ORG_ADMIN, TEACHER -> topicMapper.toAdminTopicResponse(topic);
@@ -380,5 +388,47 @@ public class TopicServiceImpl implements TopicService {
     }
 
     return ApiResponse.ok("Topic Retrieved", formattedTopic);
+  }
+
+  public ResponseEntity<ApiResponse<Object>> deleteTopic(UUID topicId) {
+    Topic topic = topicRepository.findById(topicId).orElse(null);
+    if(topic == null){
+      System.out.println("NO TOPIC FOUND");
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found " + topicId);
+    }
+
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    User user = (User) authentication.getPrincipal();
+
+    //Site admins always see the correct answers
+    if(user.getRole().equals(Role.SITE_ADMIN)){
+      return removeTopic(topicId);
+    }
+    
+    Organization organization = topic.getOrganization();
+    if(organization != null) {
+      OrganizationMember member = organizationMemberRepository
+        .findByOrganizationIdAndUserId(organization.getId(), user.getId())
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found"));
+
+      if(member.getRole() == OrgRoles.ORG_ADMIN){
+        return removeTopic(topicId);
+      }
+      else if(member.getRole() == OrgRoles.TEACHER){
+        checkOrgPermission(organization, user, OrgPermissions.DELETE_TOPIC, "Topic not found");
+        return removeTopic(topicId);
+      }
+      //Student attempted to delete topic
+      System.out.println("STUDENT ATTEMPTED TO DELETE A TOPIC");
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found " + topicId);
+    }
+
+    if(topic.getUser().equals(user)){
+      return removeTopic(topicId);
+    }
+
+    System.err.println("END OF DELETE HIT");
+
+    return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found " + topicId);
   }
 }

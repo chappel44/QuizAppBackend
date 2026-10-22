@@ -97,6 +97,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         var user = userRepository.findByEmail(request.getEmail())
             .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
+        
+        if(!user.isActive()){
+            throw new IllegalArgumentException("User is inactive.");
+        }
 
         var jwt = jwtService.generateToken(generateClaims(user), user);
         return JwtAuthenticationResponse.builder().token(jwt).build();

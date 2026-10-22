@@ -6,6 +6,7 @@ import com.tasks.organizer.section.entity.Section;
 import com.tasks.organizer.user.entity.User;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,6 +25,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
@@ -53,7 +55,8 @@ public class Topic extends NamedEntity {
   private List<Question> questions;
 
   @OneToMany (mappedBy = "topic", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<Attempt> attempts;
+  @Builder.Default
+  private List<Attempt> attempts = new ArrayList<>();
   
   @Default 
   @Min (1)

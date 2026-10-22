@@ -8,8 +8,8 @@ import com.tasks.organizer.topic.dto.request.CreateTopicDTO;
 import com.tasks.organizer.common.dto.ApiResponse;
 
 public interface TopicService {
-  String generateTopic(CreateTopicDTO entity, UUID sectionId, UUID organizationId);
+  String createTopic(CreateTopicDTO entity, UUID sectionId, UUID organizationId);
   ResponseEntity<ApiResponse<Object>> updateTopic(UUID topicId, CreateTopicDTO request);
   ResponseEntity<ApiResponse<Object>> getTopicWithQuestionsAndAnswers(UUID topicId);
-  
+  ResponseEntity<ApiResponse<Object>> deleteTopic(UUID topicId);
 }

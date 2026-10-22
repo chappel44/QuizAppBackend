@@ -29,7 +29,7 @@ public class TopicController {
     /* ========== Admin Mappings ========== */
     @PostMapping("/api/authenticated/topics")
     public String createTopic(@Validated @RequestBody CreateTopicDTO entity, @RequestParam(required = true) UUID sectionId, @RequestParam(required = false) UUID organizationId) {
-        return topicService.generateTopic(entity, sectionId, organizationId);
+        return topicService.createTopic(entity, sectionId, organizationId);
     }
 
     @PatchMapping ("/api/authenticated/topics")
@@ -37,18 +37,14 @@ public class TopicController {
         return topicService.updateTopic(topicId, request);
     }
 
-    @DeleteMapping ("/api/admin/topics")
-    public String deleteTopic(@RequestParam @NotNull UUID topicId) {
-        if(topicId == null){
-            return "Must provide a topic id";
-        }
-        topicRepository.deleteById(topicId);
-        return "Topic deleted";
+    @DeleteMapping ("/api/authenticated/topics")
+    public ResponseEntity<ApiResponse<Object>> deleteTopic(@RequestParam(required = true) UUID topicId) {
+        return topicService.deleteTopic(topicId);
     }
 
     /* ========== Authenticated Mappings ========== */
     @GetMapping ("/api/authenticated/topics")
-    public ResponseEntity<ApiResponse<Object>> getTopicWithQuestionsAndAnswers(@RequestParam UUID topicId) {
+    public ResponseEntity<ApiResponse<Object>> getTopicWithQuestionsAndAnswers(@RequestParam(required = true) UUID topicId) {
         return topicService.getTopicWithQuestionsAndAnswers(topicId);
     }
 }
