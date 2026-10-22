@@ -3,9 +3,12 @@ package com.tasks.organizer.authentication.service;
 import com.tasks.organizer.authentication.dto.request.SignUpRequest;
 import com.tasks.organizer.authentication.dto.request.SigninRequest;
 import com.tasks.organizer.authentication.dto.response.JwtAuthenticationResponse;
+import com.tasks.organizer.common.dto.ApiResponse;
 import com.tasks.organizer.organization.OrganizationRepository;
 import com.tasks.organizer.organization.dto.OrganizationDTO;
 import com.tasks.organizer.organization.entity.Organization;
+import com.tasks.organizer.organizationmember.OrganizationMemberRepository;
+import com.tasks.organizer.organizationmember.entity.OrgPermissions;
 import com.tasks.organizer.organizationmember.entity.OrgRoles;
 import com.tasks.organizer.organizationmember.entity.OrganizationMember;
 import com.tasks.organizer.user.entity.Role;
@@ -18,16 +21,21 @@ import lombok.AllArgsConstructor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 @AllArgsConstructor
 public class AuthenticationServiceImpl implements AuthenticationService {
+    private final OrganizationMemberRepository organizationMemberRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -38,6 +46,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("id", user.getId());
         extraClaims.put("role", user.getRole().toString());
+        return extraClaims;
+    }
+
+    private Map<String, Object> generateOrgClaims(OrgPermissions[] orgPermissions, OrgRoles role, UUID organizationId){
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("organizationId", organizationId);
+        extraClaims.put("orgPermissions", orgPermissions);
+        extraClaims.put("role", role);
         return extraClaims;
     }
 
@@ -99,10 +115,30 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
         
         if(!user.isActive()){
-            throw new IllegalArgumentException("User is inactive.");
+            throw new IllegalArgumentException("Invalid email or password.");
         }
 
         var jwt = jwtService.generateToken(generateClaims(user), user);
         return JwtAuthenticationResponse.builder().token(jwt).build();
+    }
+
+    @Override 
+    public ResponseEntity<ApiResponse<Object>> createOrgToken(UUID organizationId){
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User user = (User) authentication.getPrincipal();
+
+        OrganizationMember member = organizationMemberRepository.findByOrganizationIdAndUserId(organizationId, user.getId()).orElse(null);
+
+        if(member == null){
+            return ApiResponse.error(HttpStatus.NOT_FOUND, "Active member not found");
+        }
+
+        OrgPermissions[] permissions = member.getPermissions();
+        OrgRoles orgRole = member.getRole();
+        UUID userOrg = organizationId;
+
+        var jwt = jwtService.generateToken(generateOrgClaims(permissions, orgRole, userOrg), user);
+
+        return ApiResponse.ok("Created token", JwtAuthenticationResponse.builder().token(jwt).build());
     }
 }

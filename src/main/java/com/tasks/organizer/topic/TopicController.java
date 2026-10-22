@@ -28,7 +28,7 @@ public class TopicController {
 
     /* ========== Admin Mappings ========== */
     @PostMapping("/api/authenticated/topics")
-    public String createTopic(@Validated @RequestBody CreateTopicDTO entity, @RequestParam(required = true) UUID sectionId, @RequestParam(required = false) UUID organizationId) {
+    public ResponseEntity<ApiResponse<Object>> createTopic(@Validated @RequestBody CreateTopicDTO entity, @RequestParam(required = true) UUID sectionId, @RequestParam(required = false) UUID organizationId) {
         return topicService.createTopic(entity, sectionId, organizationId);
     }
 

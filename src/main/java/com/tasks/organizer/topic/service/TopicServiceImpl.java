@@ -27,6 +27,8 @@ import com.tasks.organizer.section.entity.Section;
 import com.tasks.organizer.topic.entity.Topic;
 import com.tasks.organizer.topic.entity.Visibility;
 import com.tasks.organizer.organization.OrganizationRepository;
+import com.tasks.organizer.organization.context.OrgAuthenticationToken;
+import com.tasks.organizer.organization.context.OrgContext;
 import com.tasks.organizer.organization.entity.Organization;
 import com.tasks.organizer.organizationmember.OrganizationMemberRepository;
 import com.tasks.organizer.organizationmember.entity.OrgPermissions;
@@ -38,6 +40,7 @@ import com.tasks.organizer.topic.mapper.TopicMapper;
 import com.tasks.organizer.question.AnswerRepository;
 import com.tasks.organizer.question.QuestionRepository;
 import com.tasks.organizer.section.SectionRepository;
+import com.tasks.organizer.authorization.OrgAuthorization;
 import com.tasks.organizer.common.dto.ApiResponse;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -52,8 +55,15 @@ public class TopicServiceImpl implements TopicService {
   final OrganizationRepository organizationRepository;
   final TopicMapper topicMapper;
   final OrganizationMemberRepository organizationMemberRepository;
-  
+  final OrgAuthorization orgAuth;
+
   private static final int ANSWER_LIMIT = 5;
+
+  private Authentication hasPermissions(){
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    OrgContext org = (auth instanceof OrgAuthenticationToken t) ? t.getOrgContext() : null;
+    return auth;
+  }
 
   @Transactional
   private Question createQuestion(QuestionDTO question, Topic topic) {
@@ -119,38 +129,43 @@ public class TopicServiceImpl implements TopicService {
     return ApiResponse.of(HttpStatus.NO_CONTENT, "Topic deleted", null);
   }
 
-  @Transactional 
-  public String createTopic(CreateTopicDTO entity, UUID sectionId, UUID organizationId){
-      Section section = sectionRepository.findById(sectionId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Section not found" + sectionId));
+  @Transactional
+  public ResponseEntity<ApiResponse<Object>> createTopic(CreateTopicDTO entity, UUID sectionId, UUID organizationId) {
+    Section section = sectionRepository.findById(sectionId).orElse(null);
+    if (section == null) {
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Section not found");
+    }
 
-      if(!section.getIsActive()){
-        throw new ResponseStatusException(HttpStatus.CONFLICT, "This section is marked inactive " + sectionId);
+    if (!section.getIsActive()) {
+      return ApiResponse.error(HttpStatus.CONFLICT, "This section is marked inactive");
+    }
+
+    TopicDTO topicDTO = entity.getTopic();
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    User user = (User) auth.getPrincipal();
+
+    // Personal topics have no organization and are always PUBLIC
+    Organization organization = null;
+    Visibility visibility = Visibility.PUBLIC;
+
+    if (organizationId != null) {
+      if (!orgAuth.hasPermission(organizationId, OrgPermissions.CREATE_TOPIC)) {
+        return ApiResponse.error(HttpStatus.NOT_FOUND, "Section not found");
       }
 
-      TopicDTO topicDTO = entity.getTopic();
-
-      Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-      User user = (User) authentication.getPrincipal();
-
-      //Public user topics have no organization and are always PUBLIC
-      Organization organization = null;
-      Visibility visibility = Visibility.PUBLIC;
-
-      if(organizationId != null){
-        organization = organizationRepository.findById(organizationId)
-          .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Organization not found " + organizationId));
-
-        checkOrgPermission(organization, user, OrgPermissions.CREATE_TOPIC, "Section not found" + sectionId);
-
-        if(entity.getTopic().getVisibility() == null){
-          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Visibility is required for organization topics");
-        }
-        visibility = entity.getTopic().getVisibility();
+      if (topicDTO.getVisibility() == null) {
+        return ApiResponse.error(HttpStatus.BAD_REQUEST, "Visibility is required for organization topics");
       }
 
-      //Construct a new Topic
-      Topic newTopic = Topic.builder()
+      organization = organizationRepository.findById(organizationId).orElse(null);
+      if (organization == null) {
+        return ApiResponse.error(HttpStatus.NOT_FOUND, "Section not found");
+      }
+      visibility = topicDTO.getVisibility();
+    }
+
+    Topic newTopic = Topic.builder()
       .section(section)
       .organization(organization)
       .visibility(visibility)
@@ -159,23 +174,18 @@ public class TopicServiceImpl implements TopicService {
       .name(topicDTO.getName())
       .description(topicDTO.getDescription())
       .questionPoolSize(topicDTO.getQuestionPoolSize())
-      .dueDate(topicDTO.getDueDate()).build();
+      .dueDate(topicDTO.getDueDate())
+      .build();
 
-      //Save topic to the repository
-      Topic insertedTopic = topicRepository.save(newTopic);
+    Topic insertedTopic = topicRepository.save(newTopic);
 
-      List<QuestionDTO> requestQuestions = new ArrayList<>(entity.getQuestions());
-      List<Question> questionsToInsert = new ArrayList<>(); 
-      for (QuestionDTO question: requestQuestions){
-        Question newQuestion = createQuestion(question, insertedTopic);
+    List<Question> questionsToInsert = new ArrayList<>();
+    for (QuestionDTO question : entity.getQuestions()) {
+      questionsToInsert.add(createQuestion(question, insertedTopic));
+    }
+    questionRepository.saveAll(questionsToInsert);
 
-        questionsToInsert.add(newQuestion);
-      }
-
-      //Save questions
-      questionRepository.saveAll(questionsToInsert);
-
-      return String.valueOf(insertedTopic.getId());
+    return ApiResponse.of(HttpStatus.CREATED, "Topic created", Map.of("id", insertedTopic.getId()));
   }
 
   @Transactional 

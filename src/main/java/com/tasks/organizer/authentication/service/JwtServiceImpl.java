@@ -9,13 +9,20 @@ import io.jsonwebtoken.security.Keys;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+
+import com.tasks.organizer.organization.context.OrgContext;
+import com.tasks.organizer.organizationmember.entity.OrgPermissions;
+import com.tasks.organizer.organizationmember.entity.OrgRoles;
 
 @Service
 public class JwtServiceImpl implements JwtService {
@@ -46,6 +53,19 @@ public class JwtServiceImpl implements JwtService {
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String userName = extractUserName(token);
         return (userName.equals(userDetails.getUsername())) && !isTokenExpired(token);
+    }
+
+    public OrgContext extractOrgContext(String token) {
+        Claims claims = extractAllClaims(token); // use whatever your service calls it
+        String orgId = claims.get("organizationId", String.class);
+        if (orgId == null) return null;
+
+        OrgRoles role = OrgRoles.valueOf(claims.get("role", String.class));
+        List<?> raw = claims.get("orgPermissions", List.class);
+        Set<OrgPermissions> perms = raw == null ? Set.of()
+            : raw.stream().map(Object::toString).map(OrgPermissions::valueOf).collect(Collectors.toSet());
+
+        return new OrgContext(UUID.fromString(orgId), role, perms);
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> claimsResolvers) {
@@ -81,4 +101,6 @@ public class JwtServiceImpl implements JwtService {
         byte[] keyBytes = Decoders.BASE64.decode(jwtSigningKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
+
+    
 }
