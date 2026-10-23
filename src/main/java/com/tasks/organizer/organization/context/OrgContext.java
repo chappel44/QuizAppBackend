@@ -10,4 +10,12 @@ public record OrgContext(UUID organizationId, OrgRoles role, Set<OrgPermissions>
   public boolean has(OrgPermissions p) {
     return role == OrgRoles.ORG_ADMIN || permissions.contains(p);
   }
+
+  public boolean isStaff() {
+    return role == OrgRoles.ORG_ADMIN || role == OrgRoles.TEACHER;
+  }
+
+  public boolean isStudent() {
+    return role == OrgRoles.STUDENT;
+  }
 }

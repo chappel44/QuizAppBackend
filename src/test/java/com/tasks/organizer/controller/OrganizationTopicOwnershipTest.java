@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,8 +20,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tasks.organizer.attempt.repository.AttemptQuestionRepository;
@@ -28,6 +31,7 @@ import com.tasks.organizer.attempt.repository.AttemptRepository;
 import com.tasks.organizer.authentication.dto.request.SigninRequest;
 import com.tasks.organizer.authentication.dto.response.JwtAuthenticationResponse;
 import com.tasks.organizer.authentication.service.AuthenticationService;
+import com.tasks.organizer.common.dto.ApiResponse;
 import com.tasks.organizer.organization.OrganizationRepository;
 import com.tasks.organizer.organization.entity.Organization;
 import com.tasks.organizer.organizationmember.OrganizationMemberRepository;
@@ -152,6 +156,45 @@ public class OrganizationTopicOwnershipTest {
     return objectMapper.writeValueAsString(body);
   }
 
+  String getOrgHeader(String userToken, UUID organizationId) throws Exception {
+    MvcResult result = mockMvc.perform(
+        post("/api/authenticated/organization/{organizationId}/create-org-token", organizationId)
+          .header("Authorization", "Bearer " + userToken))
+      .andExpect(status().isOk())
+      .andReturn();
+
+    String token = objectMapper.readTree(result.getResponse().getContentAsString())
+      .path("data").path("token").asText();
+
+    return "Bearer " + token;
+  }
+
+  Organization createOrganization(String name) {
+    return organizationRepository.save(Organization.builder()
+      .name(name + " " + UUID.randomUUID())
+      .description(name)
+      .maxOrgAdmins(5)
+      .maxTeachers(5)
+      .maxStudents(30)
+      .build());
+  }
+
+  OrganizationMember addMember(Organization org, User user, OrgRoles role, boolean active, OrgPermissions... permissions) {
+    return organizationMemberRepository.save(OrganizationMember.builder()
+      .user(user)
+      .role(role)
+      .organization(org)
+      .permissions(permissions)   // varargs arrives as an array; empty if none passed
+      .isActive(active)
+      .build());
+  }
+
+  // Convenience: new org + active member in one call
+  OrganizationMember createOrgWithMember(User user, OrgRoles role, OrgPermissions... permissions) {
+    Organization org = createOrganization("Good guys");
+    return addMember(org, user, role, true, permissions);
+  }
+
   @BeforeEach
   void setUp() {
     owner = userRepository.save(User.builder()
@@ -244,19 +287,6 @@ public class OrganizationTopicOwnershipTest {
     entityManager.clear();
   }
 
-  @Transactional 
-  void createOrgMember(OrgPermissions[] orgPermissions, User newMember, Organization org){
-    OrganizationMember studentMember = OrganizationMember.builder()
-      .user(newMember)
-      .role(OrgRoles.TEACHER)
-      .permissions(orgPermissions)
-      .organization(org)
-    .build();
-
-    organization.setOrganizationMembers(List.of(studentMember));
-    organizationRepository.saveAndFlush(organization);
-  }
-
   @Test 
   void outsiderCannotAccessPrivateTopic() throws Exception {
     mockMvc.perform(get("/api/authenticated/topics")
@@ -267,33 +297,24 @@ public class OrganizationTopicOwnershipTest {
 
   @Test 
   void crossOrganizationAccessTopic() throws Exception {
-    Organization badOrg = Organization.builder()
-      .name("good org")
-      .description("good org")
-      .maxOrgAdmins(1)
-      .maxStudents(1)
-      .maxTeachers(1)
-    .build();
-    badOrg = organizationRepository.save(badOrg);
-
-    organizationMemberRepository.save(OrganizationMember.builder()
-      .user(intruder)
-      .role(OrgRoles.TEACHER)
-      .organization(badOrg)
-      .isActive(true)
-      .build());
+    OrganizationMember otherOrgMember = createOrgWithMember(intruder, OrgRoles.TEACHER, OrgPermissions.CREATE_TOPIC);
+    String authHeader = getOrgHeader(intruderToken, otherOrgMember.getOrganization().getId());
 
     mockMvc.perform(get("/api/authenticated/topics")
       .param("topicId", topic.getId().toString())
-      .header("Authorization", "Bearer " + intruderToken))
-      .andExpect(status().isNotFound());
+      .header("Authorization", "Bearer " + intruderToken)
+      .header("Org-Authorization", authHeader))
+    .andExpect(status().isNotFound());
   }
 
   @Test 
   void adminWithCorrectAnswers() throws Exception {
+    String orgHeader = getOrgHeader(ownerToken, organization.getId());
+
     mockMvc.perform(get("/api/authenticated/topics")
       .param("topicId", topic.getId().toString())
-      .header("Authorization", "Bearer " + ownerToken))
+      .header("Authorization", "Bearer " + ownerToken)
+      .header("Org-Authorization", orgHeader))
     .andExpect(status().isOk())
     .andExpect(jsonPath("$.data.questions").isNotEmpty())
     .andExpect(jsonPath("$.data.questions[*].id").exists())
@@ -304,19 +325,13 @@ public class OrganizationTopicOwnershipTest {
 
   @Test 
   void studentWithNoCorrectAnswer() throws Exception {
-    OrganizationMember studentMember = OrganizationMember.builder()
-      .user(intruder)
-      .role(OrgRoles.STUDENT)
-      .organization(organization)
-    .build();
-
-    organizationMemberRepository.save(studentMember);
-    organization.setOrganizationMembers(List.of(studentMember));
-    organizationRepository.saveAndFlush(organization);
+    OrganizationMember newMember = addMember(organization, intruder, OrgRoles.STUDENT, true, null);
+    String authHeader = getOrgHeader(intruderToken, newMember.getOrganization().getId());
 
     mockMvc.perform(get("/api/authenticated/topics")
       .param("topicId", topic.getId().toString())
-      .header("Authorization", "Bearer " + intruderToken))
+      .header("Authorization", "Bearer " + intruderToken)
+      .header("Org-Authorization", authHeader))
     .andExpect(status().isOk())
     .andExpect(jsonPath("$.data.questions").isNotEmpty())
     .andExpect(jsonPath("$.data.questions[*].id").exists())
@@ -341,102 +356,87 @@ public class OrganizationTopicOwnershipTest {
   void crossOrganizationCreateTopic() throws Exception {
     String payload = generateTopicPayload(section);
 
-    // A different organization the intruder legitimately belongs to
-    Organization otherOrganization = organizationRepository.save(Organization.builder()
-      .name("Other org")
-      .maxOrgAdmins(1)
-      .maxTeachers(5)
-      .maxStudents(30)
-      .build());
-
-    organizationMemberRepository.save(OrganizationMember.builder()
-      .user(intruder)
-      .role(OrgRoles.TEACHER)
-      .permissions(new OrgPermissions[] { OrgPermissions.CREATE_TOPIC })
-      .organization(otherOrganization)
-      .isActive(true)
-      .build());
+    OrganizationMember otherOrgMember = createOrgWithMember(intruder, OrgRoles.TEACHER, OrgPermissions.CREATE_TOPIC);
+    String authHeader = getOrgHeader(intruderToken, otherOrgMember.getOrganization().getId());
+    
+    long topicCount = topicRepository.count();
 
     mockMvc.perform(post("/api/authenticated/topics")
         .header("Authorization", "Bearer " + intruderToken)
+        .header("Org-Authorization", authHeader)
         .param("sectionId", section.getId().toString())
         .param("organizationId", organization.getId().toString())
         .contentType(MediaType.APPLICATION_JSON)
         .content(payload))
       .andExpect(status().isNotFound());
+    
+    assertTrue(topicCount == topicRepository.count());
   }
 
   @Test
   void teacherWithoutCreatePermissionDenied() throws Exception {
     String payload = generateTopicPayload(section);
 
-    OrganizationMember studentMember = OrganizationMember.builder()
-      .user(intruder)
-      .role(OrgRoles.TEACHER)
-      .organization(organization)
-    .build();
-
-    organization.setOrganizationMembers(List.of(studentMember));
-    organizationRepository.saveAndFlush(organization);
+    OrganizationMember otherOrgMember = addMember(organization, intruder, OrgRoles.TEACHER, true, OrgPermissions.UPDATE_TOPIC);
+    String authHeader = getOrgHeader(intruderToken, otherOrgMember.getOrganization().getId());
+    
+    long topicCount = topicRepository.count();
 
     mockMvc.perform(post("/api/authenticated/topics")
         .header("Authorization", "Bearer " + intruderToken)
+        .header("Org-Authorization", authHeader)
         .param("sectionId", section.getId().toString())
         .param("organizationId", organization.getId().toString())
         .contentType(MediaType.APPLICATION_JSON)
         .content(payload))
       .andExpect(status().isNotFound());
+    
+    assertTrue(topicCount == topicRepository.count());
   }
 
   @Test
   void teacherWithCreatePermissionAllowed() throws Exception {
     String payload = generateTopicPayload(section);
 
-    OrganizationMember studentMember = OrganizationMember.builder()
-      .user(intruder)
-      .role(OrgRoles.TEACHER)
-      .permissions(new OrgPermissions[] { OrgPermissions.CREATE_TOPIC })
-      .organization(organization)
-    .build();
+    OrganizationMember otherOrgMember = addMember(organization, intruder, OrgRoles.TEACHER, true, OrgPermissions.CREATE_TOPIC);
+    String authHeader = getOrgHeader(intruderToken, otherOrgMember.getOrganization().getId());
 
-    organization.setOrganizationMembers(List.of(studentMember));
-    organizationRepository.saveAndFlush(organization);
+    long topicCount = topicRepository.count();
 
     mockMvc.perform(post("/api/authenticated/topics")
         .header("Authorization", "Bearer " + intruderToken)
+        .header("Org-Authorization", authHeader)
         .param("sectionId", section.getId().toString())
         .param("organizationId", organization.getId().toString())
         .contentType(MediaType.APPLICATION_JSON)
         .content(payload))
-      .andExpect(status().isOk());
+      .andExpect(status().isCreated());
+
+    assertTrue(topicCount+1 == topicRepository.count());
   }
 
   @Test
   void inactiveTeacherCannotCreateTopic() throws Exception {
     String payload = generateTopicPayload(section);
 
-    OrganizationMember newMember = organizationMemberRepository.save(OrganizationMember.builder()
-        .user(intruder)
-        .role(OrgRoles.TEACHER)
-        .permissions(new OrgPermissions[] { OrgPermissions.CREATE_TOPIC })
-        .organization(organization)
-        .isActive(false)
-      .build()
-    );
+    OrganizationMember newMember = addMember(organization, intruder, OrgRoles.TEACHER, false, OrgPermissions.CREATE_TOPIC);
+    String authHeader = getOrgHeader(intruderToken, newMember.getOrganization().getId());
 
-    organization.setOrganizationMembers(List.of(newMember));
-    organizationRepository.saveAndFlush(organization);
+    long topicCount = topicRepository.count();
 
     mockMvc.perform(post("/api/authenticated/topics")
         .header("Authorization", "Bearer " + intruderToken)
+        .header("Org-Authorization", authHeader)
         .param("sectionId", section.getId().toString())
         .param("organizationId", newMember.getOrganization().getId().toString())
         .contentType(MediaType.APPLICATION_JSON)
         .content(payload))
-      .andExpect(status().isForbidden());
+      .andExpect(status().isNotFound());
+    
+    assertTrue(topicCount == topicRepository.count());
   }
 
-  @Test 
+  @Test
   void outsiderCannotUpdateOrgTopic() throws Exception {
     String payload = generateTopicUpdatePayload(topic);
     
@@ -452,17 +452,12 @@ public class OrganizationTopicOwnershipTest {
   void teacherWithoutUpdatePermissionDenied() throws Exception {
     String payload = generateTopicUpdatePayload(topic);
     
-    OrganizationMember studentMember = OrganizationMember.builder()
-        .user(intruder)
-        .role(OrgRoles.TEACHER)
-        .organization(organization)
-      .build();
-
-    organization.setOrganizationMembers(List.of(studentMember));
-    organizationRepository.saveAndFlush(organization);
+    OrganizationMember newMember = addMember(organization, intruder, OrgRoles.TEACHER, true, OrgPermissions.CREATE_TOPIC);
+    String authHeader = getOrgHeader(intruderToken, newMember.getOrganization().getId());
 
     mockMvc.perform(patch("/api/authenticated/topics")
         .header("Authorization", "Bearer " + intruderToken)
+        .header("Org-Authorization", authHeader)
         .param("topicId", topic.getId().toString())
         .contentType(MediaType.APPLICATION_JSON)
         .content(payload))
@@ -473,18 +468,12 @@ public class OrganizationTopicOwnershipTest {
   void teacherWithUpdatePermissionAllowed() throws Exception {
     String payload = generateTopicPayload(section);
 
-    OrganizationMember studentMember = OrganizationMember.builder()
-      .user(intruder)
-      .role(OrgRoles.TEACHER)
-      .permissions(new OrgPermissions[] { OrgPermissions.UPDATE_TOPIC })
-      .organization(organization)
-    .build();
-
-    organization.setOrganizationMembers(List.of(studentMember));
-    organizationRepository.saveAndFlush(organization);
+    OrganizationMember newMember = addMember(organization, intruder, OrgRoles.TEACHER, true, OrgPermissions.UPDATE_TOPIC);
+    String authHeader = getOrgHeader(intruderToken, newMember.getOrganization().getId());
 
     mockMvc.perform(patch("/api/authenticated/topics")
         .header("Authorization", "Bearer " + intruderToken)
+        .header("Org-Authorization", authHeader)
         .param("topicId", topic.getId().toString())
         .contentType(MediaType.APPLICATION_JSON)
         .content(payload))
@@ -495,24 +484,16 @@ public class OrganizationTopicOwnershipTest {
   void inactiveTeacherCannotUpdateTopic() throws Exception {
     String payload = generateTopicPayload(section);
 
-    OrganizationMember newMember = organizationMemberRepository.save(OrganizationMember.builder()
-        .user(intruder)
-        .role(OrgRoles.TEACHER)
-        .permissions(new OrgPermissions[] { OrgPermissions.UPDATE_TOPIC })
-        .organization(organization)
-        .isActive(false)
-      .build()
-    );
-
-    organization.setOrganizationMembers(List.of(newMember));
-    organizationRepository.saveAndFlush(organization);
+    OrganizationMember newMember = addMember(organization, intruder, OrgRoles.TEACHER, false, OrgPermissions.UPDATE_TOPIC);
+    String authHeader = getOrgHeader(intruderToken, newMember.getOrganization().getId());
 
     mockMvc.perform(patch("/api/authenticated/topics")
         .header("Authorization", "Bearer " + intruderToken)
+        .header("Authorization", authHeader)
         .param("topicId", topic.getId().toString())
         .contentType(MediaType.APPLICATION_JSON)
         .content(payload))
-      .andExpect(status().isForbidden());
+      .andExpect(status().isNotFound());
   }
 
   @Test
@@ -527,18 +508,14 @@ public class OrganizationTopicOwnershipTest {
 
   @Test
   void teacherWithoutDeletePermissionsDenied() throws Exception {
-    organizationMemberRepository.save(OrganizationMember.builder()
-      .user(intruder)
-      .role(OrgRoles.TEACHER)
-      .permissions(new OrgPermissions[] { OrgPermissions.CREATE_TOPIC, OrgPermissions.UPDATE_TOPIC }) // has some permission, but not DELETE_TOPIC
-      .organization(organization)
-      .isActive(true)
-      .build());
-    
-      mockMvc.perform(delete("/api/authenticated/topics")
-        .header("Authorization", "Bearer " + intruderToken)
-        .param("topicId", topic.getId().toString()))
-      .andExpect(status().isNotFound());
+    OrganizationMember newMember = addMember(organization, intruder, OrgRoles.TEACHER, true, OrgPermissions.CREATE_TOPIC);
+    String authHeader = getOrgHeader(intruderToken, newMember.getOrganization().getId());
+  
+    mockMvc.perform(delete("/api/authenticated/topics")
+      .header("Authorization", "Bearer " + intruderToken)
+      .header("Org-Authorization", authHeader)
+      .param("topicId", topic.getId().toString()))
+    .andExpect(status().isNotFound());
 
     // Deny means nothing changed
     assertTrue(topicRepository.findById(topic.getId()).isPresent());
@@ -546,20 +523,31 @@ public class OrganizationTopicOwnershipTest {
 
   @Test
   void teacherWithDeletePermissionsAllowed() throws Exception {
-    organizationMemberRepository.save(OrganizationMember.builder()
-      .user(intruder)
-      .role(OrgRoles.TEACHER)
-      .permissions(new OrgPermissions[] { OrgPermissions.CREATE_TOPIC, OrgPermissions.DELETE_TOPIC, OrgPermissions.UPDATE_TOPIC }) // has some permission, but not DELETE_TOPIC
-      .organization(organization)
-      .isActive(true)
-      .build());
-    
+      OrganizationMember newMember = addMember(organization, intruder, OrgRoles.TEACHER, true, OrgPermissions.DELETE_TOPIC);
+      String authHeader = getOrgHeader(intruderToken, newMember.getOrganization().getId());
+
       mockMvc.perform(delete("/api/authenticated/topics")
         .header("Authorization", "Bearer " + intruderToken)
+        .header("Org-Authorization", authHeader)
         .param("topicId", topic.getId().toString()))
       .andExpect(status().isNoContent());
 
     // Deny means nothing changed
     assertTrue(topicRepository.findById(topic.getId()).isEmpty());
+  }
+
+  @Test
+  void inactiveTeacherCannotDeleteTopic() throws Exception {
+      OrganizationMember newMember = addMember(organization, intruder, OrgRoles.TEACHER, false, OrgPermissions.DELETE_TOPIC);
+      String authHeader = getOrgHeader(intruderToken, newMember.getOrganization().getId());
+
+      mockMvc.perform(delete("/api/authenticated/topics")
+        .header("Authorization", "Bearer " + intruderToken)
+        .header("Org-Authorization", authHeader)
+        .param("topicId", topic.getId().toString()))
+      .andExpect(status().isNotFound());
+
+    // Deny means nothing changed
+    assertTrue(topicRepository.findById(topic.getId()).isPresent());
   }
 }

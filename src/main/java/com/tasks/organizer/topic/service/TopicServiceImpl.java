@@ -1,7 +1,6 @@
 package com.tasks.organizer.topic.service;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,13 +26,9 @@ import com.tasks.organizer.section.entity.Section;
 import com.tasks.organizer.topic.entity.Topic;
 import com.tasks.organizer.topic.entity.Visibility;
 import com.tasks.organizer.organization.OrganizationRepository;
-import com.tasks.organizer.organization.context.OrgAuthenticationToken;
-import com.tasks.organizer.organization.context.OrgContext;
 import com.tasks.organizer.organization.entity.Organization;
 import com.tasks.organizer.organizationmember.OrganizationMemberRepository;
 import com.tasks.organizer.organizationmember.entity.OrgPermissions;
-import com.tasks.organizer.organizationmember.entity.OrgRoles;
-import com.tasks.organizer.organizationmember.entity.OrganizationMember;
 import com.tasks.organizer.user.entity.User;
 import com.tasks.organizer.topic.entity.Topic.TopicType;
 import com.tasks.organizer.topic.mapper.TopicMapper;
@@ -59,12 +54,6 @@ public class TopicServiceImpl implements TopicService {
 
   private static final int ANSWER_LIMIT = 5;
 
-  private Authentication hasPermissions(){
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    OrgContext org = (auth instanceof OrgAuthenticationToken t) ? t.getOrgContext() : null;
-    return auth;
-  }
-
   @Transactional
   private Question createQuestion(QuestionDTO question, Topic topic) {
       Question newQuestion = Question.builder()
@@ -88,7 +77,7 @@ public class TopicServiceImpl implements TopicService {
       if(count > ANSWER_LIMIT){
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Max answer count of " + ANSWER_LIMIT + " exceeded.");
       }
-      
+
       if(newAnswer.getIsCorrect()){
         if(!trueFound)
           trueFound = true;
@@ -100,31 +89,8 @@ public class TopicServiceImpl implements TopicService {
     return newQuestion;
   }
 
-  //ORG_ADMIN is always allowed, TEACHER must hold the required permission, everyone else is rejected
-  //Non members and members without permission get a 404 so the resource isn't revealed
-  private void checkOrgPermission(Organization organization, User user, OrgPermissions requiredPermission, String notFoundMessage) {
-    OrganizationMember member = organizationMemberRepository
-      .findByOrganizationIdAndUserId(organization.getId(), user.getId())
-      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, notFoundMessage));
-
-    if(!member.isActive()){
-      System.out.println("Member is inactive");
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Organization membership is inactive");
-    }
-
-    boolean allowed = switch (member.getRole()) {
-      case ORG_ADMIN -> true;
-      case TEACHER -> Arrays.asList(member.getPermissions()).contains(requiredPermission);
-      default -> false;
-    };
-    if(!allowed){
-      System.out.println("MISSING THE PERMISSION " + requiredPermission);
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, notFoundMessage);
-    }
-  }
-
   @Transactional 
-  ResponseEntity<ApiResponse<Object>> removeTopic(UUID topicId){
+  private ResponseEntity<ApiResponse<Object>> removeTopic(UUID topicId){
     topicRepository.deleteById(topicId);
     return ApiResponse.of(HttpStatus.NO_CONTENT, "Topic deleted", null);
   }
@@ -150,7 +116,7 @@ public class TopicServiceImpl implements TopicService {
     Visibility visibility = Visibility.PUBLIC;
 
     if (organizationId != null) {
-      if (!orgAuth.hasPermission(organizationId, OrgPermissions.CREATE_TOPIC)) {
+      if (!orgAuth.hasPermissionVerified(organizationId, OrgPermissions.CREATE_TOPIC)) {
         return ApiResponse.error(HttpStatus.NOT_FOUND, "Section not found");
       }
 
@@ -190,15 +156,20 @@ public class TopicServiceImpl implements TopicService {
 
   @Transactional 
   public ResponseEntity<ApiResponse<Object>> updateTopic(UUID topicId, CreateTopicDTO request) {
-    Topic activeTopic = topicRepository.findById(topicId)
-      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found" + topicId));
+    Topic activeTopic = topicRepository.findById(topicId).orElse(null);
+
+    if(activeTopic == null){
+      return ApiResponse.of(HttpStatus.NOT_FOUND, "Topic not found" + topicId, null);
+    }
 
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
     Organization organization = activeTopic.getOrganization();
     if(organization != null){
-      checkOrgPermission(organization, user, OrgPermissions.UPDATE_TOPIC, "Topic not found " + topicId);
+      if(!orgAuth.hasPermissionVerified(organization.getId(), OrgPermissions.UPDATE_TOPIC)){
+        return ApiResponse.of(HttpStatus.NOT_FOUND, "Topic not found" + topicId, null);
+      }
 
       //Visibility only applies to organization topics and does not affect the version
       if(request.getTopic().getVisibility() != null){
@@ -372,24 +343,30 @@ public class TopicServiceImpl implements TopicService {
 
     Object formattedTopic;
     Organization organization = topic.getOrganization();
-    OrganizationMember member = organization == null ? null : organization.getOrganizationMembers().stream()
-      .filter(m -> m.isActive() && m.getUser() != null && Objects.equals(m.getUser().getId(), user.getId()))
-      .findFirst()
-      .orElse(null);
 
-    if(organization != null && topic.getVisibility() == Visibility.PRIVATE){
-      //Non members get the same 404 as a missing topic so private topics aren't revealed
-      if(member == null){
-        return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found" + topicId);
+    if(organization != null){
+      if(topic.getVisibility() == Visibility.PRIVATE) {
+        //Non members get the same 404 as a missing topic so private topics aren't revealed
+        if(orgAuth.isStaff(organization.getId())){
+          formattedTopic = topicMapper.toAdminTopicResponse(topic);
+        }
+        else if(orgAuth.isStudent(organization.getId())){
+          formattedTopic = topicMapper.toResponse(topic);
+        }
+        else
+          return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found" + topicId);
       }
-      formattedTopic = switch (member.getRole()) {
-        case ORG_ADMIN, TEACHER -> topicMapper.toAdminTopicResponse(topic);
-        case STUDENT -> topicMapper.toResponse(topic);
-      };
-    }
-    else if(member != null && (member.getRole() == OrgRoles.ORG_ADMIN || member.getRole() == OrgRoles.TEACHER)) {
-      //Org admins and teachers see the correct answers on their organization's public topics
-      formattedTopic = topicMapper.toAdminTopicResponse(topic);
+      else if(topic.getVisibility() == Visibility.PUBLIC){
+        if(orgAuth.isStaff(organization.getId())){
+          formattedTopic = topicMapper.toAdminTopicResponse(topic);
+        }
+        else{
+          formattedTopic = topicMapper.toResponse(topic);
+        }
+      }
+      else{
+        return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found" + topicId); 
+      }
     }
     else{
       //Owners see the correct answers, everyone else gets the student response
@@ -403,41 +380,27 @@ public class TopicServiceImpl implements TopicService {
   public ResponseEntity<ApiResponse<Object>> deleteTopic(UUID topicId) {
     Topic topic = topicRepository.findById(topicId).orElse(null);
     if(topic == null){
-      System.out.println("NO TOPIC FOUND");
       return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found " + topicId);
     }
 
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
-    //Site admins always see the correct answers
     if(user.getRole().equals(Role.SITE_ADMIN)){
       return removeTopic(topicId);
     }
     
     Organization organization = topic.getOrganization();
     if(organization != null) {
-      OrganizationMember member = organizationMemberRepository
-        .findByOrganizationIdAndUserId(organization.getId(), user.getId())
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found"));
+      if(!orgAuth.hasPermissionVerified(organization.getId(), OrgPermissions.DELETE_TOPIC))
+        return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found ");
 
-      if(member.getRole() == OrgRoles.ORG_ADMIN){
-        return removeTopic(topicId);
-      }
-      else if(member.getRole() == OrgRoles.TEACHER){
-        checkOrgPermission(organization, user, OrgPermissions.DELETE_TOPIC, "Topic not found");
-        return removeTopic(topicId);
-      }
-      //Student attempted to delete topic
-      System.out.println("STUDENT ATTEMPTED TO DELETE A TOPIC");
-      return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found " + topicId);
+      return removeTopic(topicId);
     }
 
     if(topic.getUser().equals(user)){
       return removeTopic(topicId);
     }
-
-    System.err.println("END OF DELETE HIT");
 
     return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found " + topicId);
   }
