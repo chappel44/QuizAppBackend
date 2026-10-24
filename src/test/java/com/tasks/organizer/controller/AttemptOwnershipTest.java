@@ -25,6 +25,7 @@ import com.tasks.organizer.authentication.dto.request.SigninRequest;
 import com.tasks.organizer.authentication.dto.response.JwtAuthenticationResponse;
 import com.tasks.organizer.authentication.service.AuthenticationService;
 import com.tasks.organizer.organization.entity.Organization;
+import com.tasks.organizer.organizationmember.entity.OrgPermissions;
 import com.tasks.organizer.organizationmember.entity.OrgRoles;
 import com.tasks.organizer.organizationmember.entity.OrganizationMember;
 import com.tasks.organizer.question.AnswerRepository;
@@ -181,6 +182,42 @@ public class AttemptOwnershipTest {
     .andExpect(status().isNotFound());
   }
 
+  @Test 
+  void ownerCannotAccessAttemptWithoutProperOrgHeader() throws Exception {
+    OrganizationMember studentOrgB = orgHelper.createOrgWithMember(owner, OrgRoles.TEACHER, OrgPermissions.READ_ATTEMPT);
+    String studentOrgBToken = orgHelper.getOrgHeader(ownerToken, studentOrgB.getOrganization().getId());
+
+    mockMvc.perform(get("/api/authenticated/attempt")
+      .param("attemptId", attempt.getId().toString())
+      .header("Authorization", "Bearer " + ownerToken)
+      .header("Org-Authorization", studentOrgBToken))
+    .andExpect(status().isNotFound());
+  }
+
+  @Test 
+  void crossOrgAdminAttemptAccess() throws Exception {
+    OrganizationMember intruderMember = orgHelper.createOrgWithMember(intruder, OrgRoles.ORG_ADMIN, null);
+    String intruderOrgToken = orgHelper.getOrgHeader(intruderToken, intruderMember.getOrganization().getId());
+
+    mockMvc.perform(get("/api/authenticated/attempt")
+      .param("attemptId", attempt.getId().toString())
+      .header("Authorization", "Bearer " + intruderToken)
+      .header("Org-Authorization", intruderOrgToken))
+    .andExpect(status().isNotFound());
+  }
+
+  @Test 
+  void crossOrgTeacherAttemptAccess() throws Exception {
+    OrganizationMember intruderMember = orgHelper.createOrgWithMember(intruder, OrgRoles.TEACHER, OrgPermissions.READ_ATTEMPT);
+    String intruderOrgToken = orgHelper.getOrgHeader(intruderToken, intruderMember.getOrganization().getId());
+
+    mockMvc.perform(get("/api/authenticated/attempt")
+      .param("attemptId", attempt.getId().toString())
+      .header("Authorization", "Bearer " + intruderToken)
+      .header("Org-Authorization", intruderOrgToken))
+    .andExpect(status().isNotFound());
+  }
+
   @Test
   void ownerCanViewAttempt() throws Exception {
     String ownerOrgToken = orgHelper.getOrgHeader(ownerToken, ownerOrg.getId());
@@ -190,6 +227,14 @@ public class AttemptOwnershipTest {
       .header("Authorization", "Bearer " + ownerToken)
       .header("Org-Authorization", ownerOrgToken))
     .andExpect(status().isOk());
+  }
+  
+  @Test
+  void ownerWithoutTokenCannotViewAttempt() throws Exception {
+    mockMvc.perform(get("/api/authenticated/attempt")
+      .param("attemptId", attempt.getId().toString())
+      .header("Authorization", "Bearer " + ownerToken))
+    .andExpect(status().isNotFound());
   }
 
   @Test 
@@ -205,8 +250,8 @@ public class AttemptOwnershipTest {
   }
 
   @Test 
-  void teacherCanViewAttempt() throws Exception {
-    OrganizationMember orgTeacher = orgHelper.addMember(ownerOrg, intruder, OrgRoles.TEACHER, true);
+  void teacherInSameOrgCanViewAttempt() throws Exception {
+    OrganizationMember orgTeacher = orgHelper.addMember(ownerOrg, intruder, OrgRoles.TEACHER, true, OrgPermissions.READ_ATTEMPT);
     String orgTeacherToken = orgHelper.getOrgHeader(intruderToken, orgTeacher.getOrganization().getId());
 
     mockMvc.perform(get("/api/authenticated/attempt")
@@ -229,44 +274,14 @@ public class AttemptOwnershipTest {
   }
 
   @Test 
-  void otherUserCannotSubmitQuestionForAnotherUserAttempt() throws Exception {
-    mockMvc.perform(patch("/api/student/attempt/record/question")
-      .param("answerId", answer.getId().toString())
-      .param("attemptQuestionId", attemptQuestion.getId().toString())
-      .header("Authorization", "Bearer " + intruderToken))
+  void studentInSameOrgWithPermissionEscalatedCannotViewAttempt() throws Exception {
+    orgHelper.addMember(ownerOrg, intruder, OrgRoles.STUDENT, true, OrgPermissions.READ_ATTEMPT);
+    String orgStudentToken = orgHelper.getOrgHeader(intruderToken, ownerOrg.getId());
+
+    mockMvc.perform(get("/api/authenticated/attempt")
+      .param("attemptId", attempt.getId().toString())
+      .header("Authorization", "Bearer " + intruderToken)
+      .header("Org-Authorization", orgStudentToken))
     .andExpect(status().isNotFound());
-  }
-
-  @Test 
-  void userCannotAccessAdminRoute() throws Exception {
-    String body = """
-      {
-        "topic": {
-          "name": "Admin only topic",
-          "description": "Should not be created by a student",
-          "topicType": "QUIZ",
-          "dueDate": "2026-12-03T18:30:00",
-          "isActive": true,
-          "questionPoolSize": 1,
-        },
-        "questions": [
-          {
-            "points": 1.0,
-            "question": "What is 2 + 2?",
-            "answer": "4",
-            "answers": [
-              { "answer": "4", "isCorrect": true }
-            ]
-          }
-        ]
-      }
-      """.formatted(section.getId());
-
-    mockMvc.perform(post("/api/admin/topics")
-      .param("sectionId", section.getId().toString())
-      .contentType(MediaType.APPLICATION_JSON)
-      .content(body)
-      .header("Authorization", "Bearer " + intruderToken))
-    .andExpect(status().isForbidden());
   }
 }

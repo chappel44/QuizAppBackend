@@ -6,5 +6,6 @@ public enum OrgPermissions {
   UPDATE_TOPIC,
   READ_STUDENT, 
   DELETE_STUDENT,
+  READ_ATTEMPT,
   FORGIVE_STUDENT_ATTEMPT
 }

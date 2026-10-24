@@ -17,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.tasks.organizer.common.dto.ApiResponse;
+import com.tasks.organizer.organizationmember.entity.OrgPermissions;
 import com.tasks.organizer.attempt.dto.response.AttemptResponse;
 import com.tasks.organizer.attempt.dto.response.AttemptsWithTopicResponse;
 import com.tasks.organizer.attempt.dto.response.GetAttemptResponse;
@@ -81,14 +82,16 @@ public class AttemptServiceImpl implements AttemptService{
   // }
 
   private boolean canViewAttempts(Topic topic, User user, UUID attemptOwnerId) {
-    System.out.println("CAN VIEW ATTEMPTS RUNNNING");
     boolean isOwner = Objects.equals(attemptOwnerId, user.getId());
     UUID organizationId = topic.getOrganization().getId();
 
     if(organizationId == null || topic.getVisibility() != Visibility.PRIVATE){
       return isOwner;
     }
-    boolean canViewOrgAttempt = (isOwner && orgAuth.isStudent(organizationId)) || (!isOwner && orgAuth.isStaff(organizationId));
+    boolean isOwnerWithStudentRole = (isOwner && orgAuth.isStudent(organizationId));
+    boolean isOrgAdminOrHasPerms = (!isOwner && orgAuth.isOrgAdminOrHasPermission(organizationId, OrgPermissions.READ_ATTEMPT));
+    boolean canViewOrgAttempt = isOwnerWithStudentRole || isOrgAdminOrHasPerms;
+    
     return canViewOrgAttempt;
   }
 

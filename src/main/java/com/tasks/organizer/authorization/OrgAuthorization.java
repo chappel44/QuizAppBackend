@@ -10,6 +10,7 @@ import com.tasks.organizer.organization.context.OrgAuthenticationToken;
 import com.tasks.organizer.organization.context.OrgContext;
 import com.tasks.organizer.organizationmember.OrganizationMemberRepository;
 import com.tasks.organizer.organizationmember.entity.OrgPermissions;
+import com.tasks.organizer.organizationmember.entity.OrgRoles;
 import com.tasks.organizer.user.entity.User;
 
 import lombok.RequiredArgsConstructor;
@@ -70,5 +71,10 @@ public class OrgAuthorization {
 
   public boolean isStudent(UUID organizationId) {
     return tokenMatches(organizationId) && currentOrgContext().isStudent();
+  }
+
+  public boolean isOrgAdminOrHasPermission(UUID organizationId, OrgPermissions orgPermissions){
+    return ( tokenMatches(organizationId) && currentOrgContext().role().equals(OrgRoles.ORG_ADMIN) ) 
+    || ( hasPermission(organizationId, orgPermissions) && currentOrgContext().role().equals(OrgRoles.TEACHER) );
   }
 }
