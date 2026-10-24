@@ -49,8 +49,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return extraClaims;
     }
 
-    private Map<String, Object> generateOrgClaims(OrgPermissions[] orgPermissions, OrgRoles role, UUID organizationId){
+    private Map<String, Object> generateOrgClaims(UUID userId, OrgPermissions[] orgPermissions, OrgRoles role, UUID organizationId){
         Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("id", userId);
         extraClaims.put("organizationId", organizationId);
         extraClaims.put("orgPermissions", orgPermissions);
         extraClaims.put("role", role);
@@ -133,11 +134,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             return ApiResponse.error(HttpStatus.NOT_FOUND, "Active member not found");
         }
 
+        // if(member.isActive() == false){
+        //     return ApiResponse.error(HttpStatus.NOT_FOUND, "Active member not found");
+        // }
+
         OrgPermissions[] permissions = member.getPermissions();
         OrgRoles orgRole = member.getRole();
         UUID userOrg = organizationId;
 
-        var jwt = jwtService.generateToken(generateOrgClaims(permissions, orgRole, userOrg), user);
+        var jwt = jwtService.generateToken(generateOrgClaims(user.getId(), permissions, orgRole, userOrg), user);
 
         return ApiResponse.ok("Created token", JwtAuthenticationResponse.builder().token(jwt).build());
     }

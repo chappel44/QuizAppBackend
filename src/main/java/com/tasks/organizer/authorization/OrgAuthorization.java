@@ -33,15 +33,14 @@ public class OrgAuthorization {
     OrgContext org = currentOrgContext();
     return org != null
         && organizationId != null
-        && org.organizationId().equals(organizationId);
+        && org.organizationId().equals(organizationId)
+        && currentUser().getId().equals(currentOrgContext().userId());
   }
 
-  /** Cheap check from token claims only. Fine for reads and low-risk actions. */
   public boolean hasPermission(UUID organizationId, OrgPermissions permission) {
     return tokenMatches(organizationId) && currentOrgContext().has(permission);
   }
 
-  /** Token claims plus a live DB check that the membership is still active. Use for destructive actions. */
   public boolean hasPermissionVerified(UUID organizationId, OrgPermissions permission) {
     User user = currentUser();
     return user != null
@@ -49,7 +48,22 @@ public class OrgAuthorization {
         && organizationMemberRepository
             .existsByOrganizationIdAndUserIdAndIsActiveTrue(organizationId, user.getId());
   }
-
+  
+  /**
+   * Ensures the authenticated user is staff for the given organization.
+   *
+   * <p>This check passes only if both of the following are true:
+   * <ul>
+   *   <li>The user has the role {@code OrgRoles.ORG_ADMIN} or {@code OrgRoles.TEACHER}.</li>
+   *   <li>The organization ID in the {@code Org-Authorization} header matches
+   *       the {@code organizationId} being accessed.</li>
+   * </ul>
+   *
+   * @param organizationId the ID of the organization the user is trying to access
+   * @return {@code true} if the user is an org admin or teacher in the organization
+   *         identified by the {@code Org-Authorization} header, and that organization
+   *         matches {@code organizationId}; {@code false} otherwise
+  */
   public boolean isStaff(UUID organizationId) {
     return tokenMatches(organizationId) && currentOrgContext().isStaff();
   }

@@ -44,8 +44,8 @@ public class AttemptController {
   }
 
   @GetMapping("/attempt")
-  public ResponseEntity<ApiResponse<Object>> getAttempt(@RequestParam (required = true) UUID attemptId, @RequestParam (required = false) UUID userId) {
-    return studentService.getAttempt(attemptId, userId);
+  public ResponseEntity<ApiResponse<Object>> getAttempt(@RequestParam (required = true) UUID attemptId) {
+    return studentService.getAttempt(attemptId);
   }
 
   @GetMapping("/attempts")

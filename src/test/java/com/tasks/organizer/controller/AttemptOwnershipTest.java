@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,14 +24,19 @@ import com.tasks.organizer.attempt.repository.AttemptRepository;
 import com.tasks.organizer.authentication.dto.request.SigninRequest;
 import com.tasks.organizer.authentication.dto.response.JwtAuthenticationResponse;
 import com.tasks.organizer.authentication.service.AuthenticationService;
+import com.tasks.organizer.organization.entity.Organization;
+import com.tasks.organizer.organizationmember.entity.OrgRoles;
+import com.tasks.organizer.organizationmember.entity.OrganizationMember;
 import com.tasks.organizer.question.AnswerRepository;
 import com.tasks.organizer.question.QuestionRepository;
 import com.tasks.organizer.question.entity.Answer;
 import com.tasks.organizer.question.entity.Question;
 import com.tasks.organizer.section.SectionRepository;
 import com.tasks.organizer.section.entity.Section;
+import com.tasks.organizer.support.OrgHelper;
 import com.tasks.organizer.topic.TopicRepository;
 import com.tasks.organizer.topic.entity.Topic;
+import com.tasks.organizer.topic.entity.Visibility;
 import com.tasks.organizer.topic.entity.Topic.TopicType;
 import com.tasks.organizer.user.UserRepository;
 import com.tasks.organizer.user.entity.Role;
@@ -42,7 +48,8 @@ import jakarta.transaction.Transactional;
 @SpringBootTest 
 @AutoConfigureMockMvc 
 @Transactional
-class AttemptOwnershipTest {
+@Import(OrgHelper.class)
+public class AttemptOwnershipTest {
   @Autowired MockMvc mockMvc;
   @Autowired UserRepository userRepository;
   @Autowired AttemptRepository attemptRepository;
@@ -54,6 +61,7 @@ class AttemptOwnershipTest {
   @Autowired PasswordEncoder passwordEncoder;
   @Autowired AuthenticationService authenticationService;
   @Autowired EntityManager entityManager;
+  @Autowired OrgHelper orgHelper;
 
   Answer answer;
   User owner, intruder;
@@ -61,7 +69,12 @@ class AttemptOwnershipTest {
   Section section;
   AttemptQuestion attemptQuestion;
   String ownerToken, intruderToken;
+  Organization ownerOrg;
 
+  //Create owner and intruder objects
+  //Creates a Section -> topic -> question -> answer
+  //attempt belongs to owner
+  //Generates two auth tokens for intruder and owner
   @BeforeEach
   void setUp() {
     owner = userRepository.save(User.builder()
@@ -69,7 +82,7 @@ class AttemptOwnershipTest {
       .password(passwordEncoder.encode("12"))
       .firstName("owner")
       .lastName("owner")
-      .role(Role.SITE_ADMIN)
+      .role(Role.USER)
       .build()
     );
 
@@ -82,6 +95,9 @@ class AttemptOwnershipTest {
       .build()
     );
 
+    ownerOrg = orgHelper.createOrganization("Owners org");
+    orgHelper.addMember(ownerOrg, owner, OrgRoles.STUDENT, true, null);
+
     section = sectionRepository.save(Section.builder()
       .name("test section description")
       .description("test section description")
@@ -93,6 +109,9 @@ class AttemptOwnershipTest {
       .section(section)
       .description("Test description")
       .topicType(TopicType.RANDOM_QUESTIONS)
+      .organization(ownerOrg)
+      .user(owner)
+      .visibility(Visibility.PRIVATE)
       .questionPoolSize(1)
     .build());
 
@@ -129,8 +148,7 @@ class AttemptOwnershipTest {
       .build()
     );
 
-    attempt.setAttemptQuestions(List.of(
-    ));
+    attempt.setAttemptQuestions(List.of(attemptQuestion));
 
     SigninRequest intruderRequest = SigninRequest.builder()
     .email(intruder.getEmail())
@@ -152,19 +170,62 @@ class AttemptOwnershipTest {
   }
 
   @Test 
-  void otherUserCannotViewAttempt() throws Exception {
-    mockMvc.perform(get("/api/student/attempt")
+  void crossOrgStudentAttemptAccess() throws Exception {
+    OrganizationMember intruderMember = orgHelper.createOrgWithMember(intruder, OrgRoles.STUDENT, null);
+    String intruderOrgToken = orgHelper.getOrgHeader(intruderToken, intruderMember.getOrganization().getId());
+
+    mockMvc.perform(get("/api/authenticated/attempt")
       .param("attemptId", attempt.getId().toString())
-      .header("Authorization", "Bearer " + intruderToken))
+      .header("Authorization", "Bearer " + intruderToken)
+      .header("Org-Authorization", intruderOrgToken))
     .andExpect(status().isNotFound());
   }
 
   @Test
   void ownerCanViewAttempt() throws Exception {
-    mockMvc.perform(get("/api/student/attempt")
+    String ownerOrgToken = orgHelper.getOrgHeader(ownerToken, ownerOrg.getId());
+
+    mockMvc.perform(get("/api/authenticated/attempt")
       .param("attemptId", attempt.getId().toString())
-      .header("Authorization", "Bearer " + ownerToken))
+      .header("Authorization", "Bearer " + ownerToken)
+      .header("Org-Authorization", ownerOrgToken))
     .andExpect(status().isOk());
+  }
+
+  @Test 
+  void orgAdminCanViewAttempt() throws Exception {
+    OrganizationMember orgAdmin = orgHelper.addMember(ownerOrg, intruder, OrgRoles.ORG_ADMIN, true);
+    String orgAdminToken = orgHelper.getOrgHeader(intruderToken, orgAdmin.getOrganization().getId());
+
+    mockMvc.perform(get("/api/authenticated/attempt")
+      .param("attemptId", attempt.getId().toString())
+      .header("Authorization", "Bearer " + intruderToken)
+      .header("Org-Authorization", orgAdminToken))
+    .andExpect(status().isOk());
+  }
+
+  @Test 
+  void teacherCanViewAttempt() throws Exception {
+    OrganizationMember orgTeacher = orgHelper.addMember(ownerOrg, intruder, OrgRoles.TEACHER, true);
+    String orgTeacherToken = orgHelper.getOrgHeader(intruderToken, orgTeacher.getOrganization().getId());
+
+    mockMvc.perform(get("/api/authenticated/attempt")
+      .param("attemptId", attempt.getId().toString())
+      .header("Authorization", "Bearer " + intruderToken)
+      .header("Org-Authorization", orgTeacherToken))
+    .andExpect(status().isOk());
+  }
+
+  @Test 
+  void studentInSameOrgCannotViewAnotherStudentsAttempt() throws Exception {
+    orgHelper.addMember(ownerOrg, intruder, OrgRoles.STUDENT, true);
+    String orgStudentToken = orgHelper.getOrgHeader(intruderToken, ownerOrg.getId());
+
+    mockMvc.perform(get("/api/authenticated/attempt")
+      .param("attemptId", attempt.getId().toString())
+      .header("Authorization", "Bearer " + intruderToken)
+      .header("Org-Authorization", orgStudentToken))
+    .andExpect(status().isNotFound());
   }
 
   @Test 

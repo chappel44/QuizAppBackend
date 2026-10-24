@@ -65,7 +65,9 @@ public class JwtServiceImpl implements JwtService {
         Set<OrgPermissions> perms = raw == null ? Set.of()
             : raw.stream().map(Object::toString).map(OrgPermissions::valueOf).collect(Collectors.toSet());
 
-        return new OrgContext(UUID.fromString(orgId), role, perms);
+        String userId = claims.get("id", String.class);
+
+        return new OrgContext(UUID.fromString(userId), UUID.fromString(orgId), role, perms);
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> claimsResolvers) {
@@ -101,6 +103,4 @@ public class JwtServiceImpl implements JwtService {
         byte[] keyBytes = Decoders.BASE64.decode(jwtSigningKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
-
-    
 }

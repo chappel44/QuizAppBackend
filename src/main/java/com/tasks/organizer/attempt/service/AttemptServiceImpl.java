@@ -1,6 +1,5 @@
 package com.tasks.organizer.attempt.service;
 
-import com.tasks.organizer.user.UserRepository;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,14 +28,12 @@ import com.tasks.organizer.question.entity.Question;
 import com.tasks.organizer.user.entity.Role;
 import com.tasks.organizer.topic.entity.Topic;
 import com.tasks.organizer.topic.entity.Visibility;
-import com.tasks.organizer.organization.entity.Organization;
-import com.tasks.organizer.organizationmember.entity.OrgRoles;
-import com.tasks.organizer.organizationmember.entity.OrganizationMember;
 import com.tasks.organizer.user.entity.User;
 import com.tasks.organizer.topic.entity.Topic.TopicType;
 import com.tasks.organizer.attempt.mapper.AttemptMapper;
 import com.tasks.organizer.attempt.repository.AttemptQuestionRepository;
 import com.tasks.organizer.attempt.repository.AttemptRepository;
+import com.tasks.organizer.authorization.OrgAuthorization;
 import com.tasks.organizer.topic.mapper.TopicMapper;
 import com.tasks.organizer.question.QuestionRepository;
 import com.tasks.organizer.topic.TopicRepository;
@@ -48,66 +45,51 @@ import lombok.AllArgsConstructor;
 @Service 
 @AllArgsConstructor  
 public class AttemptServiceImpl implements AttemptService{
-  private final UserRepository userRepository;
+  // private final UserRepository userRepository;
   final TopicRepository topicRepository;
   final AttemptRepository attemptRepository;
   final AttemptQuestionRepository attemptQuestionRepository;
   final QuestionRepository questionRepository;
   final TopicMapper topicMapper;
   final AttemptMapper attemptMapper;
+  final OrgAuthorization orgAuth;
 
   private boolean canAttempt(Topic topic, User user) {
-    Organization organization = topic.getOrganization();
+    UUID organizationId = topic.getOrganization().getId();
 
     // Public topics and topics outside any organization are open
-    if (organization == null || topic.getVisibility() != Visibility.PRIVATE) {
+    if (organizationId == null || topic.getVisibility() != Visibility.PRIVATE) {
       return true;
     }
 
-    // Private org topics: only active students of that org
-    return organization.getOrganizationMembers().stream()
-      .anyMatch(m -> m.isActive()
-        && m.getUser() != null
-        && Objects.equals(m.getUser().getId(), user.getId())
-        && m.getRole() == OrgRoles.STUDENT);
+    return orgAuth.isStudent(organizationId);
   }
 
-  private OrganizationMember findActiveMember(Organization organization, User user) {
-    return organization.getOrganizationMembers().stream()
-      .filter(m -> m.isActive() && m.getUser() != null && Objects.equals(m.getUser().getId(), user.getId()))
-      .findFirst()
-      .orElse(null);
-  }
+  // private OrganizationMember findActiveMember(Organization organization, User user) {
+  //   return organization.getOrganizationMembers().stream()
+  //     .filter(m -> m.isActive() && m.getUser() != null && Objects.equals(m.getUser().getId(), user.getId()))
+  //     .findFirst()
+  //     .orElse(null);
+  // }
 
-  private boolean isActiveUser(User user){
-    User activeUser = userRepository.findById(user.getId()).orElse(null);
-    if(activeUser == null || !activeUser.isActive()){
-      return false;
-    }
-    return true;
-  }
+  // private boolean isActiveUser(User user){
+  //   User activeUser = userRepository.findById(user.getId()).orElse(null);
+  //   if(activeUser == null || !activeUser.isActive()){
+  //     return false;
+  //   }
+  //   return true;
+  // }
 
-  //Topics with no organization are open to everyone, organization topics require an active member
-  private boolean isActiveOrgMemberForTopic(Topic topic, User user) {
-    Organization organization = topic.getOrganization();
-    return organization == null || findActiveMember(organization, user) != null;
-  }
-
-  //Private organization topics: the user must be an active member and either own the attempts or be an ORG_ADMIN/TEACHER
-  //Everything else: the user must own the attempts
   private boolean canViewAttempts(Topic topic, User user, UUID attemptOwnerId) {
+    System.out.println("CAN VIEW ATTEMPTS RUNNNING");
     boolean isOwner = Objects.equals(attemptOwnerId, user.getId());
-    Organization organization = topic.getOrganization();
-    if(organization == null || topic.getVisibility() != Visibility.PRIVATE){
+    UUID organizationId = topic.getOrganization().getId();
+
+    if(organizationId == null || topic.getVisibility() != Visibility.PRIVATE){
       return isOwner;
     }
-
-    OrganizationMember member = findActiveMember(organization, user);
-    if(member == null){
-      return false;
-    }
-
-    return isOwner || member.getRole() == OrgRoles.ORG_ADMIN || member.getRole() == OrgRoles.TEACHER;
+    boolean canViewOrgAttempt = (isOwner && orgAuth.isStudent(organizationId)) || (!isOwner && orgAuth.isStaff(organizationId));
+    return canViewOrgAttempt;
   }
 
   @Transactional
@@ -123,15 +105,13 @@ public class AttemptServiceImpl implements AttemptService{
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
-    if(!isActiveUser(user)){
-      return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found");
-    }
-
-    //Only active students of the organization can attempt private organization topics
-    //Everyone else gets the same 404 as a missing topic so private topics aren't revealed
     if(!canAttempt(topic, user)){
       return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found");
     }
+
+    // if(!isActiveUser(user)){
+    //   return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found");
+    // }
 
     if(topic.getIsActive().equals(false)){
       return ApiResponse.error(HttpStatus.CONFLICT, "Topic is inactive");
@@ -200,11 +180,11 @@ public class AttemptServiceImpl implements AttemptService{
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
-    if(!isActiveUser(user)) {
-      return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt question not found");
-    }
+    // if(!isActiveUser(user)) {
+    //   return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt question not found");
+    // }
 
-    if(!attempt.getUser().getId().equals(user.getId()) || !isActiveOrgMemberForTopic(attempt.getTopic(), user)){
+    if(!attempt.getUser().getId().equals(user.getId()) /*|| !isActiveOrgMemberForTopic(attempt.getTopic(), user)*/){
       return ApiResponse.of(HttpStatus.NOT_FOUND, "Attempt question not found", attemptQuestionId);
     }
 
@@ -270,25 +250,23 @@ public class AttemptServiceImpl implements AttemptService{
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
-    if(!isActiveUser(user)) {
-      return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
+    // if(!isActiveUser(user)) {
+    //   return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
+    // }
+
+    Topic attemptTopic = topicRepository.findById(attempt.getTopic().getId()).orElse(null); 
+
+    if (attemptTopic == null) {
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic associated with attempt not found");
     }
 
-    if(!attempt.getUser().getId().equals(user.getId()) || !isActiveOrgMemberForTopic(attempt.getTopic(), user)) {
+    if(!attempt.getUser().getId().equals(user.getId()) || !canAttempt(attemptTopic, user)) {
       return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
     }
 
     if(attempt.isFinalized()) {
       return ApiResponse.error(HttpStatus.CONFLICT, "This attempt has already been graded");
     }
-
-    Optional<Topic> attemptTopicOpt = topicRepository.findById(attempt.getTopic().getId()); 
-    
-    if(!attemptTopicOpt.isPresent()){
-      return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic associated with attempt not found");
-    }
-
-    Topic attemptTopic = attemptTopicOpt.get();
     
     List<Question> attemptTopicQuestions = questionRepository.findByTopicIdWithAnswers(attempt.getTopic().getId());
     
@@ -343,30 +321,25 @@ public class AttemptServiceImpl implements AttemptService{
   }
 
   @Transactional (readOnly = true) //This is used to prevent calling setQuestion() and it override the topic questions
-  public ResponseEntity<ApiResponse<Object>> getAttempt(UUID attemptId, UUID userId){
+  public ResponseEntity<ApiResponse<Object>> getAttempt(UUID attemptId){
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
-    if(!isActiveUser(user)) {
+    // if(!isActiveUser(user)) {
+    //   return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
+    // }
+
+    Attempt attempt = attemptRepository.findByTopicIdWithAnswers(attemptId).orElse(null);
+
+    if (attempt == null) {
       return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
     }
 
-    Optional<Attempt> attemptOpt = attemptRepository.findByTopicIdWithAnswers(attemptId);
-
-    if (attemptOpt.isEmpty()) {
-      return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
-    }
-
-    Attempt attempt = attemptOpt.get();
     Topic topic = attempt.getTopic();
     UUID attemptOwnerId = attempt.getUser().getId();
 
-    //When a userId is given the attempt must belong to that user
-    if(userId != null && !attemptOwnerId.equals(userId)){
-      return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
-    }
-
     if(user.getRole() != Role.SITE_ADMIN && !canViewAttempts(topic, user, attemptOwnerId)){
+      System.out.println("User does not have rights to view the attempt");
       return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
     }
 
@@ -398,9 +371,9 @@ public class AttemptServiceImpl implements AttemptService{
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     User user = (User) authentication.getPrincipal();
 
-    if(!isActiveUser(user)) {
-      return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
-    }
+    // if(!isActiveUser(user)) {
+    //   return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
+    // }
 
     Optional<Topic> topicOpt = topicRepository.findById(topicId);
 
@@ -428,6 +401,7 @@ public class AttemptServiceImpl implements AttemptService{
     }
 
     List<Attempt> currentAttempts = currentAttemptsOpt.get();
+
     List<AttemptResponse> attemptResponses = new ArrayList<>();
     for (Attempt att: currentAttempts){
       AttemptResponse attResponse = AttemptResponse.builder()
