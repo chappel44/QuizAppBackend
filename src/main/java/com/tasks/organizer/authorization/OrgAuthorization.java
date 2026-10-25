@@ -1,10 +1,12 @@
 package com.tasks.organizer.authorization;
 
+import java.nio.channels.AsynchronousByteChannel;
 import java.util.UUID;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.function.AsyncServerResponse;
 
 import com.tasks.organizer.organization.context.OrgAuthenticationToken;
 import com.tasks.organizer.organization.context.OrgContext;
@@ -25,21 +27,41 @@ public class OrgAuthorization {
     return (auth instanceof OrgAuthenticationToken t) ? t.getOrgContext() : null;
   }
 
-  private User currentUser() {
+  public User currentUser() {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     return (auth != null && auth.getPrincipal() instanceof User u) ? u : null;
   }
 
   private boolean tokenMatches(UUID organizationId) {
     OrgContext org = currentOrgContext();
-    return org != null
-        && organizationId != null
-        && org.organizationId().equals(organizationId)
-        && currentUser().getId().equals(currentOrgContext().userId());
+
+    if (org == null) {
+      System.out.println("User is missing valid Org-Authorization header");
+      return false;
+    }
+    if (organizationId == null) {
+      System.out.println("Requested organization id is null");
+      return false;
+    }
+    if (!org.organizationId().equals(organizationId)) {
+      System.out.println("Organization ids don't match: requested=" + organizationId
+          + " token=" + org.organizationId());
+      return false;
+    }
+    if (!currentUser().getId().equals(org.userId())) {
+      System.out.println("Org-Authorization token was issued for a different user: bearerUser="
+          + currentUser().getId() + " tokenUser=" + org.userId());
+      return false;
+    }
+    return true;
   }
 
   public boolean hasPermission(UUID organizationId, OrgPermissions permission) {
-    return tokenMatches(organizationId) && currentOrgContext().has(permission);
+    if(currentOrgContext() != null && !currentOrgContext().has(permission)){
+      System.out.println("User is missing the permission: " + permission);
+      return false;
+    }
+    return tokenMatches(organizationId);
   }
 
   public boolean hasPermissionVerified(UUID organizationId, OrgPermissions permission) {
@@ -70,10 +92,15 @@ public class OrgAuthorization {
   }
 
   public boolean isStudent(UUID organizationId) {
-    return tokenMatches(organizationId) && currentOrgContext().isStudent();
+    boolean isStudent = tokenMatches(organizationId) && currentOrgContext().isStudent();
+    if(tokenMatches(organizationId) && !currentOrgContext().isStudent()){
+      System.out.println("User is not a student in the org");
+    }
+    return isStudent;
   }
 
   public boolean isOrgAdminOrHasPermission(UUID organizationId, OrgPermissions orgPermissions){
+
     return ( tokenMatches(organizationId) && currentOrgContext().role().equals(OrgRoles.ORG_ADMIN) ) 
     || ( hasPermission(organizationId, orgPermissions) && currentOrgContext().role().equals(OrgRoles.TEACHER) );
   }

@@ -66,13 +66,6 @@ public class AttemptServiceImpl implements AttemptService{
     return orgAuth.isStudent(organizationId);
   }
 
-  // private OrganizationMember findActiveMember(Organization organization, User user) {
-  //   return organization.getOrganizationMembers().stream()
-  //     .filter(m -> m.isActive() && m.getUser() != null && Objects.equals(m.getUser().getId(), user.getId()))
-  //     .findFirst()
-  //     .orElse(null);
-  // }
-
   // private boolean isActiveUser(User user){
   //   User activeUser = userRepository.findById(user.getId()).orElse(null);
   //   if(activeUser == null || !activeUser.isActive()){
@@ -105,8 +98,7 @@ public class AttemptServiceImpl implements AttemptService{
 
     Topic topic = topicOpt.get();
 
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    User user = (User) authentication.getPrincipal();
+    User user = orgAuth.currentUser();
 
     if(!canAttempt(topic, user)){
       return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found");
@@ -180,14 +172,14 @@ public class AttemptServiceImpl implements AttemptService{
 
     Attempt attempt = attemptQuestion.getAttempt(); //Performs a SELECT * FROM AttemptQuestion aq LEFT JOIN Attempt a ON aq.attempt_id = a.id 
 
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    User user = (User) authentication.getPrincipal();
+    User user = orgAuth.currentUser();
 
     // if(!isActiveUser(user)) {
     //   return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt question not found");
     // }
 
     if(!attempt.getUser().getId().equals(user.getId()) /*|| !isActiveOrgMemberForTopic(attempt.getTopic(), user)*/){
+      System.out.println("Authenticated user does not match the attempts user");
       return ApiResponse.of(HttpStatus.NOT_FOUND, "Attempt question not found", attemptQuestionId);
     }
 
@@ -250,8 +242,7 @@ public class AttemptServiceImpl implements AttemptService{
 
     Attempt attempt = attemptOpt.get();
     
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    User user = (User) authentication.getPrincipal();
+    User user = orgAuth.currentUser();
 
     // if(!isActiveUser(user)) {
     //   return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
@@ -325,9 +316,7 @@ public class AttemptServiceImpl implements AttemptService{
 
   @Transactional (readOnly = true) //This is used to prevent calling setQuestion() and it override the topic questions
   public ResponseEntity<ApiResponse<Object>> getAttempt(UUID attemptId){
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    User user = (User) authentication.getPrincipal();
-
+    User user = orgAuth.currentUser();
     // if(!isActiveUser(user)) {
     //   return ApiResponse.error(HttpStatus.NOT_FOUND, "Attempt not found");
     // }
@@ -389,7 +378,7 @@ public class AttemptServiceImpl implements AttemptService{
     //Default to the authenticated user's own attempts
     UUID attemptOwnerId = userId != null ? userId : user.getId();
 
-    if(!canViewAttempts(topic, user, attemptOwnerId)){
+    if( user.getRole() != Role.SITE_ADMIN && !canViewAttempts(topic, user, attemptOwnerId) ){
       return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found");
     }
     

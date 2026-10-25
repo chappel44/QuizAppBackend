@@ -52,7 +52,13 @@ public class JwtServiceImpl implements JwtService {
     @Override
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String userName = extractUserName(token);
-        return (userName.equals(userDetails.getUsername())) && !isTokenExpired(token);
+
+        if(!userName.equalsIgnoreCase(userDetails.getUsername())){
+            System.out.println("Username from token does not match: token_user = " + userName + " active user = " + userDetails.getUsername());
+            return false;
+        }
+
+        return !isTokenExpired(token);
     }
 
     public OrgContext extractOrgContext(String token) {
