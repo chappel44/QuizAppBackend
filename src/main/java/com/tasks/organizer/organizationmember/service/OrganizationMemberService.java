@@ -8,7 +8,7 @@ import com.tasks.organizer.common.dto.ApiResponse;
 import com.tasks.organizer.organizationmember.dto.request.OrgSignupTokenDTO;
 
 public interface OrganizationMemberService {
-  ResponseEntity<ApiResponse<Object>> createOrgSignupToken(OrgSignupTokenDTO request, UUID organizationId);
+  ResponseEntity<ApiResponse<Object>> createOrgSignupToken(OrgSignupTokenDTO request);
 
   ResponseEntity<ApiResponse<Object>> redeemOrgSignupToken(UUID tokenId);
 }

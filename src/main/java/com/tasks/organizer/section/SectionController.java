@@ -4,6 +4,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tasks.organizer.common.dto.ApiResponse;
+import com.tasks.organizer.ratelimit.KeyType;
+import com.tasks.organizer.ratelimit.RateLimit;
 import com.tasks.organizer.section.dto.request.SectionDTO;
 import com.tasks.organizer.section.dto.response.SectionOverviewResponse;
 import com.tasks.organizer.section.entity.Section;
@@ -15,6 +17,7 @@ import com.tasks.organizer.user.entity.User;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -38,11 +41,13 @@ public class SectionController {
     final SectionMapperOverview sectionMapperOverview;
 
     /* ========== Admin Mappings ========== */
+    @RateLimit(capacity = 100, period = 1, unit = ChronoUnit.HOURS, keyType = KeyType.USER_ORGANIZATION_ID)
     @PostMapping("/api/admin/section")
     public Section addSection(@Validated @RequestBody SectionDTO request) {
         return sectionService.addSection(request);
     }
 
+    @RateLimit(capacity = 50, period = 30, unit = ChronoUnit.MINUTES, keyType = KeyType.USER_ORGANIZATION_ID)
     @DeleteMapping ("/api/admin/section")
     public String deleteSection(@RequestParam  @NotNull UUID sectionId){
         if(sectionId == null){
@@ -54,12 +59,14 @@ public class SectionController {
     }
 
     @Transactional
+    @RateLimit(capacity = 100, period = 1, unit = ChronoUnit.HOURS, keyType = KeyType.USER_ORGANIZATION_ID)
     @PatchMapping ("/api/admin/section")
     public ResponseEntity updateSection( @RequestParam @NotNull UUID sectionId, @RequestBody @NotNull SectionDTO request) {
         return sectionService.updateSection(sectionId, request);
     }
 
     /* ========== Authenticated Mappings ========== */
+    @RateLimit(capacity = 100, period = 1, unit = ChronoUnit.HOURS, keyType = KeyType.USER_ORGANIZATION_ID)
     @GetMapping("/api/authenticated/section-overview")
     public ResponseEntity<ApiResponse<Object>> getSectionsWithTopics() {
       Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

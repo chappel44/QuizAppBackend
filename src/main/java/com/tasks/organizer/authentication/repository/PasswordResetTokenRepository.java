@@ -1,4 +1,4 @@
-package com.tasks.organizer.authentication;
+package com.tasks.organizer.authentication.repository;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -9,4 +9,6 @@ import com.tasks.organizer.authentication.entity.PasswordResetToken;
 
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, UUID> {
   Optional<PasswordResetToken> findByTokenHash(String tokenHash);
+
+  Optional<PasswordResetToken> findByEmail(String email);
 }

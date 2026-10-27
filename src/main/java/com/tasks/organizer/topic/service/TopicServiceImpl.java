@@ -26,6 +26,7 @@ import com.tasks.organizer.section.entity.Section;
 import com.tasks.organizer.topic.entity.Topic;
 import com.tasks.organizer.topic.entity.Visibility;
 import com.tasks.organizer.organization.OrganizationRepository;
+import com.tasks.organizer.organization.context.OrgContext;
 import com.tasks.organizer.organization.entity.Organization;
 import com.tasks.organizer.organizationmember.OrganizationMemberRepository;
 import com.tasks.organizer.organizationmember.entity.OrgPermissions;
@@ -96,7 +97,7 @@ public class TopicServiceImpl implements TopicService {
   }
 
   @Transactional
-  public ResponseEntity<ApiResponse<Object>> createTopic(CreateTopicDTO entity, UUID sectionId, UUID organizationId) {
+  public ResponseEntity<ApiResponse<Object>> createTopic(CreateTopicDTO entity, UUID sectionId) {
     Section section = sectionRepository.findById(sectionId).orElse(null);
     if (section == null) {
       return ApiResponse.error(HttpStatus.NOT_FOUND, "Section not found");
@@ -108,15 +109,15 @@ public class TopicServiceImpl implements TopicService {
 
     TopicDTO topicDTO = entity.getTopic();
 
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    User user = (User) auth.getPrincipal();
-
+    User user = orgAuth.currentUser();
+    
     // Personal topics have no organization and are always PUBLIC
     Organization organization = null;
     Visibility visibility = Visibility.PUBLIC;
 
-    if (organizationId != null) {
-      if (!orgAuth.hasPermissionVerified(organizationId, OrgPermissions.CREATE_TOPIC)) {
+    OrgContext org = orgAuth.currentOrgContext();
+    if (org != null) {
+      if (!orgAuth.hasPermissionVerified(org.organizationId(), OrgPermissions.CREATE_TOPIC)) {
         return ApiResponse.error(HttpStatus.NOT_FOUND, "Section not found");
       }
 
@@ -124,7 +125,7 @@ public class TopicServiceImpl implements TopicService {
         return ApiResponse.error(HttpStatus.BAD_REQUEST, "Visibility is required for organization topics");
       }
 
-      organization = organizationRepository.findById(organizationId).orElse(null);
+      organization = organizationRepository.findById(org.organizationId()).orElse(null);
       if (organization == null) {
         return ApiResponse.error(HttpStatus.NOT_FOUND, "Section not found");
       }
@@ -162,8 +163,7 @@ public class TopicServiceImpl implements TopicService {
       return ApiResponse.of(HttpStatus.NOT_FOUND, "Topic not found" + topicId, null);
     }
 
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    User user = (User) authentication.getPrincipal();
+    User user = orgAuth.currentUser();
 
     Organization organization = activeTopic.getOrganization();
     if(organization != null){

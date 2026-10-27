@@ -1,4 +1,4 @@
-package com.tasks.organizer.authentication;
+package com.tasks.organizer.authentication.repository;
 
 import java.util.List;
 import java.util.UUID;

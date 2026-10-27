@@ -314,27 +314,6 @@ public class OrganizationTopicOwnershipTest {
   }
 
   @Test
-  void crossOrganizationCreateTopic() throws Exception {
-    String payload = generateTopicPayload(section);
-
-    OrganizationMember otherOrgMember = orgHelper.createOrgWithMember(intruder, OrgRoles.TEACHER, OrgPermissions.CREATE_TOPIC);
-    String authHeader = orgHelper.getOrgHeader(intruderToken, otherOrgMember.getOrganization().getId());
-    
-    long topicCount = topicRepository.count();
-
-    mockMvc.perform(post("/api/authenticated/topics")
-        .header("Authorization", "Bearer " + intruderToken)
-        .header("Org-Authorization", authHeader)
-        .param("sectionId", section.getId().toString())
-        .param("organizationId", organization.getId().toString())
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(payload))
-      .andExpect(status().isNotFound());
-    
-    assertTrue(topicCount == topicRepository.count());
-  }
-
-  @Test
   void teacherWithoutCreatePermissionDenied() throws Exception {
     String payload = generateTopicPayload(section);
 

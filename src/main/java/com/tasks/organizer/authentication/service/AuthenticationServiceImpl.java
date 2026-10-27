@@ -1,11 +1,12 @@
 package com.tasks.organizer.authentication.service;
 
-import com.tasks.organizer.authentication.PasswordResetTokenRepository;
+import com.tasks.organizer.authentication.HmacCryptoService;
 import com.tasks.organizer.authentication.dto.request.ResetPasswordRequest;
 import com.tasks.organizer.authentication.dto.request.SignUpRequest;
 import com.tasks.organizer.authentication.dto.request.SigninRequest;
 import com.tasks.organizer.authentication.dto.response.JwtAuthenticationResponse;
 import com.tasks.organizer.authentication.entity.PasswordResetToken;
+import com.tasks.organizer.authentication.repository.PasswordResetTokenRepository;
 import com.tasks.organizer.common.dto.ApiResponse;
 import com.tasks.organizer.organization.OrganizationRepository;
 import com.tasks.organizer.organization.dto.OrganizationDTO;
@@ -16,7 +17,6 @@ import com.tasks.organizer.organizationmember.entity.OrgRoles;
 import com.tasks.organizer.organizationmember.entity.OrganizationMember;
 import com.tasks.organizer.user.entity.Role;
 import com.tasks.organizer.user.entity.User;
-import com.tasks.organizer.user.service.UserService;
 import com.tasks.organizer.user.UserRepository;
 
 import jakarta.transaction.Transactional;
@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -47,6 +48,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final OrganizationRepository organizationRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final HmacCryptoService hmacCryptoService;
 
     private Map<String, Object> generateClaims(User user){
         Map<String, Object> extraClaims = new HashMap<>();
@@ -156,29 +158,62 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     public ResponseEntity<ApiResponse<Object>> createPasswordResetToken(String email) {
         UUID token = UUID.randomUUID();
-        String tokenHash = passwordEncoder.encode(token.toString());
+        String tokenHash = hmacCryptoService.hash(token.toString());
 
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime tomorrow = now.plusDays(1);
+        User user = userRepository.findByEmail(email).orElse(null);
+        
+        //Only create token when a user with that email is registered and active
+        if (user != null && user.isActive()) {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime tomorrow = now.plusDays(1);
 
-        PasswordResetToken resetToken = passwordResetTokenRepository.save(PasswordResetToken.builder()
-            .email(email)
-            .tokenHash(tokenHash)
-            .expiresAt(tomorrow)
-        .build());
+            PasswordResetToken activeToken = passwordResetTokenRepository.findByEmail(email).orElse(null);
+            //If a sign up token was already issued to that email then delete the previous one.
+            if(activeToken != null){
+                passwordResetTokenRepository.delete(activeToken);
+            }
 
-        return ApiResponse.ok("Email sent", resetToken.getId());
+            //Wrap in a try catch block to prevent sending an email if an insert fails
+            try{
+                passwordResetTokenRepository.saveAndFlush(PasswordResetToken.builder()
+                    .email(email)
+                    .tokenHash(tokenHash)
+                    .expiresAt(tomorrow)
+                .build());
+            }
+            catch (DataIntegrityViolationException e) {
+                System.err.println("Unexpected insert failure: " + e.getMostSpecificCause().getMessage());
+                
+                return ApiResponse.ok("If the email matches an account, a reset link has been sent.", null);
+            }
+
+            /* Ordinarily here I will send the email with the token UUID generated */
+
+            return ApiResponse.ok("If the email matches an account, a reset link has been sent.", token);
+        }
+
+        //Silently fail when an email isn't registered for an active user
+        return ApiResponse.ok("If the email matches an account, a reset link has been sent.", null);
     }
 
     @Override
     @Transactional
     public ResponseEntity<ApiResponse<Object>> resetPassword(ResetPasswordRequest resetPasswordRequest, UUID passwordResetToken) {
-        String requestTokenHash = passwordEncoder.encode(passwordResetToken.toString());
+        String requestTokenHash = hmacCryptoService.hash(passwordResetToken.toString());
 
         PasswordResetToken token = passwordResetTokenRepository.findByTokenHash(requestTokenHash).orElse(null);
 
         if(token == null) {
             return ApiResponse.error(HttpStatus.NOT_FOUND, "Token not found");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiresAt = token.getExpiresAt();
+
+        //Delete the token when the token has expired
+        if(expiresAt.isBefore(now)){
+            passwordResetTokenRepository.delete(token);
+            return ApiResponse.error(HttpStatus.GONE, "Token has expired. Expiration date: " + expiresAt);
         }
 
         User user = userRepository.findByEmail(token.getEmail()).orElse(null);
@@ -188,6 +223,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         user.setPassword(passwordEncoder.encode(resetPasswordRequest.getPassword()));
+
+        passwordResetTokenRepository.delete(token);
 
         return ApiResponse.of(HttpStatus.NO_CONTENT, "Password reset successfully", null);
     }

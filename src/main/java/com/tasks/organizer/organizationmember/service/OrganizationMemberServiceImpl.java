@@ -17,8 +17,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import com.tasks.organizer.authentication.OrgSignupTokenRepository;
 import com.tasks.organizer.authentication.entity.OrgSignupToken;
+import com.tasks.organizer.authentication.repository.OrgSignupTokenRepository;
+import com.tasks.organizer.authorization.OrgAuthorization;
 import com.tasks.organizer.common.dto.ApiResponse;
 import com.tasks.organizer.organization.OrganizationRepository;
 import com.tasks.organizer.organization.entity.Organization;
@@ -36,18 +37,24 @@ import lombok.AllArgsConstructor;
 public class OrganizationMemberServiceImpl implements OrganizationMemberService {
   final OrganizationRepository organizationRepository;
   final OrgSignupTokenRepository orgSignupTokenRepository;
+  final OrgAuthorization orgAuthorization;
 
   private static final Duration SIGNUP_TOKEN_TTL = Duration.ofDays(7);
 
   @Override
   @Transactional
-  public ResponseEntity<ApiResponse<Object>> createOrgSignupToken(OrgSignupTokenDTO request, UUID organizationId) {
+  public ResponseEntity<ApiResponse<Object>> createOrgSignupToken(OrgSignupTokenDTO request) {
     OrgRoles role;
     try{
       role = OrgRoles.valueOf(request.getRole().trim().toUpperCase());
     }
     catch(IllegalArgumentException e){
       return ApiResponse.error(HttpStatus.BAD_REQUEST, "Invalid role " + request.getRole() + ". Roles can only be ORG_ADMIN, TEACHER, or STUDENT");
+    }
+
+    UUID organizationId = orgAuthorization.currentOrgContext().organizationId();
+    if(organizationId == null){
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Organization not found " + organizationId);
     }
 
     Organization organization = organizationRepository.findById(organizationId).orElse(null);
