@@ -184,11 +184,13 @@ public class AttemptServiceImpl implements AttemptService{
     }
 
     if(attempt.isFinalized()){
+      System.out.println("This attempts grade has been finalized");
       return ApiResponse.of(HttpStatus.CONFLICT, "This attempts grade has been finalized", attempt.getId());
     }
 
     Boolean isCorrect = attemptQuestion.getIsCorrect();
-    if(Boolean.TRUE.equals(isCorrect)){ 
+    if(Boolean.TRUE.equals(isCorrect)){
+      System.out.println("Question has already been graded as correct");
       return ApiResponse.of(HttpStatus.CONFLICT, "Question already graded as correct", attemptQuestionId);
     }
 

@@ -55,7 +55,7 @@ import jakarta.transaction.Transactional;
 @SpringBootTest 
 @AutoConfigureMockMvc 
 @Transactional
-@Import(OrgHelper.class)
+@Import({OrgHelper.class, TopicHelper.class, AttemptHelper.class})
 @ExtendWith(OutputCaptureExtension.class)
 public class AttemptOwnershipTest {
   @Autowired MockMvc mockMvc;
@@ -637,7 +637,7 @@ public class AttemptOwnershipTest {
   }
 
   @Test 
-  void studentInSameOrgCannotRecordQuestionsForEachother(CapturedOutput output) throws Exception {
+  void studentInSameOrgCannotRecordQuestionsForAnother(CapturedOutput output) throws Exception {
     orgHelper.addMember(ownerOrg, intruder, OrgRoles.STUDENT, true);
     String orgStudentToken = orgHelper.getOrgHeader(intruderToken, ownerOrg.getId());
     
@@ -653,9 +653,51 @@ public class AttemptOwnershipTest {
   }
 
   @Test 
-  void nonTestedTopicRevealsCorrect(CapturedOutput output) throws Exception {
+  void teacherInSameOrgCannotRecordQuestionsForAnother(CapturedOutput output) throws Exception {
+    orgHelper.addMember(ownerOrg, intruder, OrgRoles.TEACHER, true);
+    String orgStudentToken = orgHelper.getOrgHeader(intruderToken, ownerOrg.getId());
+    
+    mockMvc.perform(patch("/api/authenticated/attempt/record/question")
+      .param("attemptQuestionId", attemptQuestion.getId().toString())
+      .param("answerId", answer.getId().toString())
+      .header("Authorization", "Bearer " + intruderToken)
+      .header("Org-Authorization", orgStudentToken))
+      .andDo(print())
+    .andExpect(status().isNotFound());
+
+    assertThat(output.getOut().contains("Authenticated user does not match the attempts user"));
+  }
+
+  @Test
+  void answerMarkedCorrectCannotResubmit(CapturedOutput output) throws Exception {
     Topic newTopic = topicHelper.createTopic(owner, Visibility.PRIVATE, TopicType.QUIZ, ownerOrg);
-    Attempt attempt = attemptHelper.createAttempt(newTopic, owner);
+    Attempt attempt = attemptHelper.createAttempt(newTopic, owner, false);
+
+    String ownerOrgToken = orgHelper.getOrgHeader(ownerToken, ownerOrg.getId());
+    
+    mockMvc.perform(patch("/api/authenticated/attempt/record/question")
+      .param("attemptQuestionId", attempt.getAttemptQuestions().get(0).getId().toString())
+      .param("answerId", topicHelper.getAnswer(newTopic).getId().toString())
+      .header("Authorization", "Bearer " + ownerToken)
+      .header("Org-Authorization", ownerOrgToken))
+    .andExpect(status().isOk())
+    .andExpect(jsonPath("$.data").value(true));
+
+    mockMvc.perform(patch("/api/authenticated/attempt/record/question")
+      .param("attemptQuestionId", attempt.getAttemptQuestions().get(0).getId().toString())
+      .param("answerId", topicHelper.getAnswer(newTopic).getId().toString())
+      .header("Authorization", "Bearer " + ownerToken)
+      .header("Org-Authorization", ownerOrgToken))
+      .andDo(print())
+    .andExpect(status().isConflict());
+
+    assertThat(output.getOut().contains("Question has already been graded as correct"));
+  }
+
+  @Test 
+  void cannotSubmitAnswerWhenAttemptFinalized(CapturedOutput output) throws Exception {
+    Topic newTopic = topicHelper.createTopic(owner, Visibility.PRIVATE, TopicType.QUIZ, ownerOrg);
+    Attempt attempt = attemptHelper.createAttempt(newTopic, owner, true);
 
     String ownerOrgToken = orgHelper.getOrgHeader(ownerToken, ownerOrg.getId());
     
@@ -665,7 +707,8 @@ public class AttemptOwnershipTest {
       .header("Authorization", "Bearer " + ownerToken)
       .header("Org-Authorization", ownerOrgToken))
       .andDo(print())
-    .andExpect(status().isOk())
-    .andExpect(jsonPath("$.data.answerCorrect").value(true));
+    .andExpect(status().isConflict());
+
+    assertThat(output.getOut().contains("This attempts grade has been finalized"));
   }
 }

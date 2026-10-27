@@ -25,7 +25,7 @@ public class AttemptHelper {
   @Autowired AttemptQuestionRepository attemptQuestionRepository;
 
   // Creates an ungraded attempt for the user with one AttemptQuestion per question on the topic
-  public Attempt createAttempt(Topic topic, User user) {
+  public Attempt createAttempt(Topic topic, User user, boolean isFinalized) {
     double totalPoints = 0;
     for (Question question : topic.getQuestions()) {
       totalPoints += question.getPoints();
@@ -37,6 +37,7 @@ public class AttemptHelper {
       .pointsEarned(0)
       .totalPoints(totalPoints)
       .percentage(0)
+      .isFinalized(isFinalized)
       .build());
 
     List<AttemptQuestion> attemptQuestions = new ArrayList<>();
