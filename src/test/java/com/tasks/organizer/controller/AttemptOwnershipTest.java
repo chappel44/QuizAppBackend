@@ -618,7 +618,6 @@ public class AttemptOwnershipTest {
     assertThat(output.getOut()).contains("Username from token does not match:");
   }
   
-  // /api/authenticated/attempt/record/question
   /* ===================================================================================== */
   /* ================================ Record attempt question ================================ */
   /* ===================================================================================== */

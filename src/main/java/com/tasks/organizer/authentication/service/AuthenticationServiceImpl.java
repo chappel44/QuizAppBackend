@@ -1,8 +1,11 @@
 package com.tasks.organizer.authentication.service;
 
+import com.tasks.organizer.authentication.PasswordResetTokenRepository;
+import com.tasks.organizer.authentication.dto.request.ResetPasswordRequest;
 import com.tasks.organizer.authentication.dto.request.SignUpRequest;
 import com.tasks.organizer.authentication.dto.request.SigninRequest;
 import com.tasks.organizer.authentication.dto.response.JwtAuthenticationResponse;
+import com.tasks.organizer.authentication.entity.PasswordResetToken;
 import com.tasks.organizer.common.dto.ApiResponse;
 import com.tasks.organizer.organization.OrganizationRepository;
 import com.tasks.organizer.organization.dto.OrganizationDTO;
@@ -13,11 +16,13 @@ import com.tasks.organizer.organizationmember.entity.OrgRoles;
 import com.tasks.organizer.organizationmember.entity.OrganizationMember;
 import com.tasks.organizer.user.entity.Role;
 import com.tasks.organizer.user.entity.User;
+import com.tasks.organizer.user.service.UserService;
 import com.tasks.organizer.user.UserRepository;
 
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -41,6 +46,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final OrganizationRepository organizationRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     private Map<String, Object> generateClaims(User user){
         Map<String, Object> extraClaims = new HashMap<>();
@@ -145,5 +151,44 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         var jwt = jwtService.generateToken(generateOrgClaims(user.getId(), permissions, orgRole, userOrg), user);
 
         return ApiResponse.ok("Created token", JwtAuthenticationResponse.builder().token(jwt).build());
+    }
+
+    @Override
+    public ResponseEntity<ApiResponse<Object>> createPasswordResetToken(String email) {
+        UUID token = UUID.randomUUID();
+        String tokenHash = passwordEncoder.encode(token.toString());
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime tomorrow = now.plusDays(1);
+
+        PasswordResetToken resetToken = passwordResetTokenRepository.save(PasswordResetToken.builder()
+            .email(email)
+            .tokenHash(tokenHash)
+            .expiresAt(tomorrow)
+        .build());
+
+        return ApiResponse.ok("Email sent", resetToken.getId());
+    }
+
+    @Override
+    @Transactional
+    public ResponseEntity<ApiResponse<Object>> resetPassword(ResetPasswordRequest resetPasswordRequest, UUID passwordResetToken) {
+        String requestTokenHash = passwordEncoder.encode(passwordResetToken.toString());
+
+        PasswordResetToken token = passwordResetTokenRepository.findByTokenHash(requestTokenHash).orElse(null);
+
+        if(token == null) {
+            return ApiResponse.error(HttpStatus.NOT_FOUND, "Token not found");
+        }
+
+        User user = userRepository.findByEmail(token.getEmail()).orElse(null);
+
+        if(user == null || !user.isActive()) {
+            return ApiResponse.error(HttpStatus.NOT_FOUND, "Token not found");
+        }
+
+        user.setPassword(passwordEncoder.encode(resetPasswordRequest.getPassword()));
+
+        return ApiResponse.of(HttpStatus.NO_CONTENT, "Password reset successfully", null);
     }
 }
