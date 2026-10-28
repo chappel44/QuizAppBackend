@@ -8,6 +8,7 @@ import com.tasks.organizer.authentication.dto.response.JwtAuthenticationResponse
 import com.tasks.organizer.authentication.entity.PasswordResetToken;
 import com.tasks.organizer.authentication.repository.PasswordResetTokenRepository;
 import com.tasks.organizer.common.dto.ApiResponse;
+import com.tasks.organizer.email.EmailService;
 import com.tasks.organizer.organization.OrganizationRepository;
 import com.tasks.organizer.organization.dto.OrganizationDTO;
 import com.tasks.organizer.organization.entity.Organization;
@@ -21,6 +22,7 @@ import com.tasks.organizer.user.UserRepository;
 
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -28,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,7 +42,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor 
 public class AuthenticationServiceImpl implements AuthenticationService {
     private final OrganizationMemberRepository organizationMemberRepository;
     private final UserRepository userRepository;
@@ -49,6 +52,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final OrganizationRepository organizationRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final HmacCryptoService hmacCryptoService;
+    private final EmailService emailService;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
 
     private Map<String, Object> generateClaims(User user){
         Map<String, Object> extraClaims = new HashMap<>();
@@ -187,9 +194,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 return ApiResponse.ok("If the email matches an account, a reset link has been sent.", null);
             }
 
-            /* Ordinarily here I will send the email with the token UUID generated */
+            emailService.sendText(
+                user.getEmail(),
+                "Reset your password",
+                "Click to reset: " + frontendUrl + "reset?token=" + token
+            );
 
-            return ApiResponse.ok("If the email matches an account, a reset link has been sent.", token);
+            return ApiResponse.ok("If the email matches an account, a reset link has been sent.", null);
         }
 
         //Silently fail when an email isn't registered for an active user

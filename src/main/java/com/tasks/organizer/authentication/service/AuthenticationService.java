@@ -12,12 +12,10 @@ import com.tasks.organizer.common.dto.ApiResponse;
 
 public interface AuthenticationService {
     ResponseEntity<JwtAuthenticationResponse> signup(SignUpRequest request);
-
     JwtAuthenticationResponse signin(SigninRequest request);
 
     ResponseEntity<ApiResponse<Object>> createOrgToken(UUID organizationId);
 
     ResponseEntity<ApiResponse<Object>> createPasswordResetToken(String email);
-    
     ResponseEntity<ApiResponse<Object>> resetPassword(ResetPasswordRequest password, UUID passwordResetToken);
 }

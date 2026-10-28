@@ -44,9 +44,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
       return true;
     }
 
-    Map<String, String> pathVariables =
-        (Map<String, String>) request.getAttribute(
-                HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
+    Map<String, String> pathVariables = (Map<String, String>) request
+      .getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
 
     String organizationId = pathVariables.get("organizationId");
     String orgKey = (organizationId == null && rateLimit.keyType() == KeyType.USER) ? "" : (":" + organizationId);
