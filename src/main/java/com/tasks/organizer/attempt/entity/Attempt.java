@@ -63,4 +63,7 @@ public class Attempt extends BaseEntity {
   @Default
   @Column (nullable = false)
   private boolean isFinalized = false;
+
+  @Column (nullable = true, name = "topic_version")
+  private int topicVersion;
 }

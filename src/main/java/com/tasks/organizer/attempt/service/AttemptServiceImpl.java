@@ -55,6 +55,14 @@ public class AttemptServiceImpl implements AttemptService{
   final AttemptMapper attemptMapper;
   final OrgAuthorization orgAuth;
 
+  // private boolean isActiveUser(User user){
+  //   User activeUser = userRepository.findById(user.getId()).orElse(null);
+  //   if(activeUser == null || !activeUser.isActive()){
+  //     return false;
+  //   }
+  //   return true;
+  // }
+
   private boolean canAttempt(Topic topic, User user) {
     UUID organizationId = topic.getOrganization().getId();
 
@@ -65,14 +73,6 @@ public class AttemptServiceImpl implements AttemptService{
 
     return orgAuth.isStudent(organizationId);
   }
-
-  // private boolean isActiveUser(User user){
-  //   User activeUser = userRepository.findById(user.getId()).orElse(null);
-  //   if(activeUser == null || !activeUser.isActive()){
-  //     return false;
-  //   }
-  //   return true;
-  // }
 
   private boolean canViewAttempts(Topic topic, User user, UUID attemptOwnerId) {
     boolean isOwner = Objects.equals(attemptOwnerId, user.getId());
@@ -142,6 +142,7 @@ public class AttemptServiceImpl implements AttemptService{
     .pointsEarned(0)
     .totalPoints(totalPoints)
     .percentage(0)
+    .topicVersion(topic.getVersion())
     .build();
 
     List<AttemptQuestion> attemptQuestions = new ArrayList<>();

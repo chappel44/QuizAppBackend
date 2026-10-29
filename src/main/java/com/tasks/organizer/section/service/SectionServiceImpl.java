@@ -39,12 +39,14 @@ public class SectionServiceImpl implements SectionService {
   }
 
   public Section addSection (SectionDTO request) {
+    
+
     Section newSection = Section.builder()
     .name(request.getName())
     .description(request.getDescription()).build();
 
     if(newSection == null){
-        return new Section();
+      return new Section();
     }
 
     Section insertedSection = sectionRepository.save(newSection);

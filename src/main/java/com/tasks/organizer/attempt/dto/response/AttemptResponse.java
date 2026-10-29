@@ -15,5 +15,6 @@ public class AttemptResponse {
   double pointsEarned;
   double percentage;
   boolean isFinalized;
+  int topicVersion;
   List<AttemptQuestionResponse> attemptQuestions;
 }
