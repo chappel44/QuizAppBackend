@@ -53,11 +53,8 @@ public interface AttemptRepository extends JpaRepository<Attempt, UUID> {
 
   @Query("""
     SELECT new com.tasks.organizer.attempt.dto.response.TopicBest(
-      t.id,
-      t.name,
-      t.version,
-      t.topicType,
-      t.dueDate,
+      t.id, t.name, t.version,
+      t.topicType, t.dueDate,
       COALESCE(att.percentage, 0.0),
       COALESCE(att.totalPoints, 0),
       COALESCE(att.pointsEarned, 0)
