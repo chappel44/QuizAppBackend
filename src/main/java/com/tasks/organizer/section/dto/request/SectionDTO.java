@@ -3,9 +3,9 @@ package com.tasks.organizer.section.dto.request;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-
-@Getter
+@Getter @NoArgsConstructor
 public class SectionDTO {
   @NotNull 
   @Size (max = 50)
@@ -14,5 +14,6 @@ public class SectionDTO {
   @Size (max = 255)
   private String description;
 
-  private boolean isActive = true;
+  @NotNull
+  private Boolean isActive;
 }

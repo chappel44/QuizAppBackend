@@ -6,10 +6,13 @@ import org.springframework.http.ResponseEntity;
 
 import com.tasks.organizer.section.dto.request.SectionDTO;
 import com.tasks.organizer.common.dto.ApiResponse;
+import com.tasks.organizer.organizationmember.entity.OrgPermissions;
 import com.tasks.organizer.section.entity.Section;
 
 
 public interface SectionService {
   ResponseEntity<ApiResponse<Object>> updateSection(UUID sectionId, SectionDTO request);
   Section addSection(SectionDTO request);
+  Section authorizeSectionOwnership(UUID sectionId, OrgPermissions permission);
+  Section validateOrgSectionOwnership(UUID sectionId);
 }

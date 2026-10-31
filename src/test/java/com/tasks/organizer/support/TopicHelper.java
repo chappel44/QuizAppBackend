@@ -30,15 +30,22 @@ public class TopicHelper {
   @Autowired QuestionRepository questionRepository;
   @Autowired AnswerRepository answerRepository;
 
-  public Section createSection(String name) {
-    return sectionRepository.save(Section.builder()
-      .name(name + " " + UUID.randomUUID())
+  public static String clampString(String input, int maxLength) {
+    if (input == null) return null;
+    return input.substring(0, Math.min(input.length(), maxLength));
+  }
+
+  public Section createSection(String name, Organization organization, User user) {
+    return sectionRepository.saveAndFlush(Section.builder()
+      .name(clampString(name + " " + UUID.randomUUID(), 50))
       .description(name)
+      .user(user)
+      .organization(organization)
       .build());
   }
   
   public Topic createTopic(User user, Visibility visibility, TopicType topicType, Organization organization) {
-    Section section = createSection("Test section");
+    Section section = createSection("Test section", organization, user);
 
     Topic topic = topicRepository.save(Topic.builder()
       .name("Test topic " + UUID.randomUUID())

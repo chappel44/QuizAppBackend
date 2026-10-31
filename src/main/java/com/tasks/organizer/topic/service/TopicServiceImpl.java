@@ -23,6 +23,7 @@ import com.tasks.organizer.question.entity.Answer;
 import com.tasks.organizer.question.entity.Question;
 import com.tasks.organizer.user.entity.Role;
 import com.tasks.organizer.section.entity.Section;
+import com.tasks.organizer.section.service.SectionService;
 import com.tasks.organizer.topic.entity.Topic;
 import com.tasks.organizer.topic.entity.Visibility;
 import com.tasks.organizer.organization.OrganizationRepository;
@@ -52,6 +53,7 @@ public class TopicServiceImpl implements TopicService {
   final TopicMapper topicMapper;
   final OrganizationMemberRepository organizationMemberRepository;
   final OrgAuthorization orgAuth;
+  final SectionService sectionService;
 
   private static final int ANSWER_LIMIT = 5;
 
@@ -98,13 +100,11 @@ public class TopicServiceImpl implements TopicService {
 
   @Transactional
   public ResponseEntity<ApiResponse<Object>> createTopic(CreateTopicDTO entity, UUID sectionId) {
-    Section section = sectionRepository.findById(sectionId).orElse(null);
-    if (section == null) {
-      return ApiResponse.error(HttpStatus.NOT_FOUND, "Section not found");
-    }
+    Section section = sectionService.validateOrgSectionOwnership(sectionId);
 
-    if (!section.getIsActive()) {
-      return ApiResponse.error(HttpStatus.CONFLICT, "This section is marked inactive");
+    if(section == null){
+      System.out.println("Section does not belong to authenticated user");
+      return ApiResponse.error(HttpStatus.NOT_FOUND, "Section not found");
     }
 
     TopicDTO topicDTO = entity.getTopic();
@@ -198,10 +198,15 @@ public class TopicServiceImpl implements TopicService {
     
     //Update which section a topic is associated with
     if(!activeTopic.getSectionId().equals(requestTopic.getSectionId())){
-      Section updatedSection = sectionRepository.findById(requestTopic.getSectionId())
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Section not found" + topicId));
+      Section section = sectionService.validateOrgSectionOwnership(requestTopic.getSectionId());
       
-      activeTopic.setSection(updatedSection);
+      if(section == null){
+        System.out.println("Section does not belong to authenticated user");
+
+        return ApiResponse.error(HttpStatus.NOT_FOUND, "Topic not found");
+      }
+
+      activeTopic.setSection(section);
     }
 
     activeTopic.setIsActive(requestTopic.getIsActive());

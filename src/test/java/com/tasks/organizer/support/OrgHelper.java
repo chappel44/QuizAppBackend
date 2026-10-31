@@ -55,7 +55,7 @@ public class OrgHelper {
   }
 
   public OrganizationMember addMember(Organization org, User user, OrgRoles role, boolean active, OrgPermissions... permissions) {
-    return organizationMemberRepository.save(OrganizationMember.builder()
+    return organizationMemberRepository.saveAndFlush(OrganizationMember.builder()
       .user(user)
       .role(role)
       .organization(org)

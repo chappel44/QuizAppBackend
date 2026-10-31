@@ -1,6 +1,7 @@
 package com.tasks.organizer.authorization;
 
 import java.nio.channels.AsynchronousByteChannel;
+import java.util.Arrays;
 import java.util.UUID;
 
 import org.springframework.security.core.Authentication;
@@ -13,6 +14,7 @@ import com.tasks.organizer.organization.context.OrgContext;
 import com.tasks.organizer.organizationmember.OrganizationMemberRepository;
 import com.tasks.organizer.organizationmember.entity.OrgPermissions;
 import com.tasks.organizer.organizationmember.entity.OrgRoles;
+import com.tasks.organizer.organizationmember.entity.OrganizationMember;
 import com.tasks.organizer.user.entity.User;
 
 import lombok.RequiredArgsConstructor;
@@ -66,10 +68,24 @@ public class OrgAuthorization {
 
   public boolean hasPermissionVerified(UUID organizationId, OrgPermissions permission) {
     User user = currentUser();
-    return user != null
-        && hasPermission(organizationId, permission)
-        && organizationMemberRepository
-            .existsByOrganizationIdAndUserIdAndIsActiveTrue(organizationId, user.getId());
+    if (user == null || !tokenMatches(organizationId)) {
+      return false;
+    }
+
+    OrganizationMember member = organizationMemberRepository
+        .findByOrganizationIdAndUserId(organizationId, user.getId())
+        .orElse(null);
+
+    if (member == null || !member.isActive()) {
+      return false;
+    }
+
+    return switch (member.getRole()) {
+      case ORG_ADMIN -> true;
+      case TEACHER -> member.getPermissions() != null
+          && Arrays.asList(member.getPermissions()).contains(permission);
+      default -> false;
+    };
   }
   
   /**
